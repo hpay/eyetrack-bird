@@ -1,0 +1,12 @@
+*.asv
+*.mat
+*.pdf
+*.jpg
+*.jpeg
+*.tif
+*.tiff
+*.egg-info
+results
+data
+.ipynb_checkpoints
+__pycache__
