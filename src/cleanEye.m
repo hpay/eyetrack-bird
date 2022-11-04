@@ -1,4 +1,4 @@
-function E = cleanEye(Eraw, scale)
+function [E, mask_temp] = cleanEye(Eraw, scale)
 
 if ~exist('scale','var')
     scale = 1;

@@ -1,5 +1,7 @@
+% TODO: update this! Check L/R reversal of reference fram affecting Phi
+% polarity
 function gazeTemplateCombine
-data_root = 'Z:\Hannah\dualcamera';
+data_root = 'Z:\Hannah\dualcamera\behavior';
 
 clear Ht_all
 folder_eye_calib = {'AMB111_220717a','IND102_220707a'};

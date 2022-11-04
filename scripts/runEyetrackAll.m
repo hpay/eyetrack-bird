@@ -1,197 +1,119 @@
-% runEyetrackAll
-% Old version -- wasn't keeping track of acrylic in front of calibration,
-% results might be off?
+function runEyetrackAll(filepath_eye_root, ploton)
 
-pptDefaults
-filepath = 'Z:\Hannah\behavior\dualcamera';
-birds = {'ROS38', 'CHC37','TRQ180'};
-% birds = {'CHC37'};
-close all
-angular_diff = @(v1,v2) acosd( dot(v1, v2, 2) ./...
-    (sqrt(sum(v1.^2,2)).*sqrt(sum(v2.^2,2)))); % (DEG)
+% Find all folders with this root
+
+% Loop eye tracking over all of them (just click on beak in the first)--
+% assuming nothing changes between files!
+
+%% May need to change these 
+camfilename = 'cam%i*.avi'; % Filename template for eye cameras
+calib_root = 'Z:\Hannah\eyetrack\calibration'; % Root dir for camera calibrations
+downsample_eye = 6; % Set the downsampling rate at which the eye camera data was collected relative to QTM
+
+data_root = fileparts(filepath_eye_root);
+a = dir(filepath_eye_root);
+folders = {a.name};
+Q_all = [];
+Q_all.N_head = 0;
+Q_all.p_rigidbody  = [];
+Q_all.R_rigidbody = [];
+E_all = [];
+E_all.pupil1 = [];
+E_all.cr1 = [];
+E_all.pupil2 = [];
+E_all.cr2 = [];
+E_all.resid1 = [];
+E_all.resid2 = [];
+E_all.points_fraction1 = [];
+E_all.points_fraction2 = [];
 
 
-for ii = 1:length(birds)
-    F = [];
-    curr_bird = birds{ii};
-    folders = dir(fullfile(filepath, [curr_bird '*']));
-    for jj = 1:length(folders)
-        results_filepath = fullfile(filepath, folders(jj).name,'results.mat' );
-        if exist(results_filepath,'file')
-            F_curr = getfield(load(results_filepath),'F');
-            F_curr.folder = repmat(folders(jj).name, height(F_curr), 1);
-            F_curr = F_curr(:,{'time_start','time_stop'...
-                'duration','eye_ang','head_ang_all','head_ang_matched','eye_head_ang',...
-                'std_eye','std_head','eye_coverage','R_eye_mask','deviation_from_mean'});
-            
-            
-            if isempty(F)
-                F = F_curr;
-                sessions = 1;
-            else
-                F = [F; F_curr];
-                sessions = sessions+1;
-            end
-        end
+p_pupil_all= [];
+p_cornea_all = [];
+p_beak_all =[];
+
+for ii  = 1:length(folders)
+    
+    filepath_eye = fullfile(data_root, folders{ii});
+    disp(filepath_eye)
+    
+    %% Get camera calibration -- folder must be named same date as recording, e.g. 220831
+    temp = strfind(filepath_eye,'_');
+    folder_camera_calib = filepath_eye(temp(end)+1:temp(end)+6);
+    filepath_camera = fullfile(calib_root, folder_camera_calib);
+    disp(filepath_camera)
+    [C,A] = calibrateCameras(filepath_camera);
+    
+    %% Run eye tracking (will skip if already run)
+    resume_beak = 0; % Change to 1 to add more beak points
+    run_beak = 1;
+    
+    if ii>1
+        run_beak = 0;
+    end
+    [E, p_pupil, p_cornea, p_beak] = processEyetrack(filepath_eye, camfilename,  C, resume_beak, run_beak);
+    N_eye = length(E.resid1);
+    
+    E_all.pupil1 = [E_all.pupil1; E.pupil1];
+    E_all.cr1 = cat(1,E_all.cr1, E.cr1);
+    E_all.pupil2 = [E_all.pupil2; E.pupil2];
+    E_all.cr2 = cat(1, E_all.cr2, E.cr2);
+    E_all.resid1 = [E_all.resid1; E.resid1];
+    E_all.resid2 = [E_all.resid2; E.resid2];
+    try
+    E_all.points_fraction1 = [E_all.points_fraction1; E.points_fraction1];
+    E_all.points_fraction2 = [E_all.points_fraction2; E.points_fraction2];
+    catch % Early recordings didn't caculate this                
+    E_all.points_fraction1 = [E_all.points_fraction1; NaN(N_eye,1)];
+    E_all.points_fraction2 = [E_all.points_fraction2; NaN(N_eye,1)];
+    end
+    p_pupil_all = [p_pupil_all; p_pupil];
+    p_cornea_all = [p_cornea_all; p_cornea];
+    p_beak_all = [p_beak_all; p_beak];
+    
+    %% Load Qualysis rigid body
+    filename_qtm = 'qtm.mat'; % 6DOF
+    Q = getfield(load(fullfile(filepath_eye,filename_qtm)),'qtm');
+    N_head = Q.Frames;
+    fprintf('Eye frames %i, predicted head frames %i, actual head frames %i\n', N_eye, N_eye*downsample_eye,N_head)
+
+    % TODO!!!! Crop if longer than eye cameras
+    if N_head  > N_eye*downsample_eye
+        Q.RigidBodies.Positions = Q.RigidBodies.Positions(1,:,1:N_eye*downsample_eye);
+        Q.RigidBodies.Rotations = Q.RigidBodies.Rotations(1,:,1:N_eye*downsample_eye);        
+        N_head = N_eye*downsample_eye;
     end
     
-    
-    F.head_hang = atan2d(F.head_ang_matched(:,2), F.head_ang_matched(:,1)); % (DEG) horizontal angular position (azimuth)
-    F.head_vang = 90-acosd(F.head_ang_matched(:,3));             % (DEG) vertical angular position (elevation - distance from horizontal)
-    
-    F.eye_hang = atan2d(F.eye_ang(:,2), F.eye_ang(:,1)); % (DEG) horizontal angular position (azimuth)
-    F.eye_vang = 90-acosd(F.eye_ang(:,3));             % (DEG) vertical angular position (elevation - distance from horizontal)
+    Q_raw.fps_head = Q.FrameRate;
+    Q_raw.N_head =  N_head;
+    Q_raw.p_rigidbody = squeeze(Q.RigidBodies.Positions(1,:,:))';
+    Q_raw.R_rigidbody = reshape(Q.RigidBodies.Rotations(1,:,:), [3,3,N_head]); % [X Y Z]
     
     
-    %     % Change eye_head_ang to be horizontal head angle
-    %         F.eye_ang = F.eye_ang(:,1:2);
-    %         F.head_ang_matched = F.head_ang_matched(:,1:2);
-    %         F.head_ang_all = F.head_ang_all(:,1:2);
+    Q_all.fps_head = Q.FrameRate;
+    Q_all.N_head = Q_all.N_head + Q_raw.N_head;
+    Q_all.p_rigidbody = [Q_all.p_rigidbody; Q_raw.p_rigidbody];
+    Q_all.R_rigidbody = cat(3, Q_all.R_rigidbody, Q_raw.R_rigidbody); % [X Y Z]
     
-    max_std_eye = 0.01;
-    max_std_head = 0.005; % Max from earlier: .01
-    min_fix_coverage = 0.15; % (s) Changed from 0.1 5/29/2022
-    
-    fprintf('%s\n', curr_bird)
-    
-    % Mask based on head variability and sufficient eye data
-    mask1 = F.std_head < max_std_head & F.eye_coverage >= min_fix_coverage & ~isnan(F.deviation_from_mean); % Mask based on head being stationary and which eye fixations have sufficient data
-    F_head = F(mask1,:);
-    F_head = sortrows(F_head,'std_eye','descend');
-    F_eye = F_head(F_head.std_eye < max_std_eye,:);
-    fprintf('Percent of fixations with std_eye>max_std_eye: %.1f%%\n', mean(F_head.std_eye>max_std_eye)*100)
-    
-    % Calculate angular differences and deviations from mean
-    F_eye.eye_head_ang = angular_diff( F_eye.eye_ang,  F_eye.head_ang_matched);
-    R_mean = nanmean(F_eye.eye_head_ang(F_eye.R_eye_mask));
-    L_mean = nanmean(F_eye.eye_head_ang(~F_eye.R_eye_mask));
-    F_eye.deviation_from_mean(F_eye.R_eye_mask) =  F_eye.eye_head_ang(F_eye.R_eye_mask) - R_mean;
-    F_eye.deviation_from_mean(~F_eye.R_eye_mask) =  F_eye.eye_head_ang(~F_eye.R_eye_mask) - L_mean;
-    
-    
-    % Give stats per bird
-    fprintf('mean head-eye angle %.1f deg\n', ...
-        nanmean([nanmean(F_eye.eye_head_ang(F_eye.R_eye_mask)), nanmean(F_eye.eye_head_ang(~F_eye.R_eye_mask))]))
-    fprintf('stdev head-eye angle %.1f deg\n', nanstd(F_eye.deviation_from_mean))
-    %     fprintf('95%% CI head-eye deviation %.1f to %.1f\n',  -std(F_eye.deviation_from_mean)*1.96, std(F_eye.deviation_from_mean)*1.96)
-    %     fprintf('95th percentile range head-eye angle deviation %.2f to %.2f\n',  prctile(F_eye.deviation_from_mean, 2.5), prctile(F_eye.deviation_from_mean, 97.5))
-    fprintf('%i fixations from %i sessions\n', height(F_eye),sessions)
-    
-    
-    % Plot stdevs of eye and head
-    %     figure; histogram(F.std_head,0:.0005:.03); xlabel('std head')
-    %     title(curr_bird)
-    %     shrink
-    %     fixticks
-    %     dashedline(max_std_head*[1 1], ylim)
-    
-    
-    %     figure; histogram(F_head.std_eye,[0:.0005:.03 inf]); xlabel('std eye')
-    %     title(curr_bird)
-    %     shrink
-    %     fixticks
-    %     dashedline(max_std_eye*[1 1], ylim);
-    
-    figure; histogram(F_eye.deviation_from_mean,[-inf -25:25 inf], 'FaceColor','c')
-    xtext = 10;
-    ytext = max(ylim)*.7;
-    text(xtext, ytext, sprintf('σ = %.1f deg',nanstd(F_eye.deviation_from_mean)))
-    axis square
-    xlabel('$\theta_{EH} - \overline{\theta}_{EH}$','Interpreter','latex')
-    title(curr_bird)
-    shrink
-    fixticks
-    xlim([-1 1]*22)
-    
-    %% Plot error by eye angle or head angle
-    
-    %{
-figure; subplot(1,2,1)
-plot(F_eye.eye_vang(F_eye.R_eye_mask), F_eye.deviation_from_mean(F_eye.R_eye_mask),'ok')
-axis square
-xlabel('eye elevation (deg)')
-ylabel('R eye deviation from mean \theta')
-subplot(1,2,2)
-plot(F_eye.eye_vang(~F_eye.R_eye_mask), F_eye.deviation_from_mean(~F_eye.R_eye_mask),'ok')
-xlabel('eye elevation (deg)')
-ylabel('L eye deviation from mean \theta')
-axis square
-linkaxes
-
-figure; subplot(1,2,1)
-plot(F_eye.eye_hang(F_eye.R_eye_mask), F_eye.deviation_from_mean(F_eye.R_eye_mask),'ok')
-axis square
-xlabel('eye azimuth (deg)')
-ylabel('R eye deviation from mean \theta')
-subplot(1,2,2)
-plot(F_eye.eye_hang(~F_eye.R_eye_mask), F_eye.deviation_from_mean(~F_eye.R_eye_mask),'ok')
-xlabel('eye azimuth (deg)')
-ylabel('L eye deviation from mean \theta')
-axis square
-    
-
-%
-figure; subplot(1,2,1)
-plot(F_eye.head_vang(F_eye.R_eye_mask), F_eye.deviation_from_mean(F_eye.R_eye_mask),'ok')
-axis square
-xlabel('head elevation (deg)')
-ylabel('R eye deviation from mean \theta')
-subplot(1,2,2)
-plot(F_eye.head_vang(~F_eye.R_eye_mask), F_eye.deviation_from_mean(~F_eye.R_eye_mask),'ok')
-xlabel('head elevation (deg)')
-ylabel('L eye deviation from mean \theta')
-axis square
-linkaxes
-
-figure; subplot(1,2,1)
-plot(F_eye.head_hang(F_eye.R_eye_mask), F_eye.deviation_from_mean(F_eye.R_eye_mask),'ok')
-axis square
-xlabel('head azimuth (deg)')
-ylabel('R eye deviation from mean \theta')
-subplot(1,2,2)
-plot(F_eye.head_hang(~F_eye.R_eye_mask), F_eye.deviation_from_mean(~F_eye.R_eye_mask),'ok')
-xlabel('head azimuth (deg)')
-ylabel('L eye deviation from mean \theta')
-axis square
-    %}
-    
-    %
-    %% Plot the distribution of saccade distances
-    %{
-    mask_eye_coverage = F.std_eye<=max_std_eye &  F.eye_coverage >= min_fix_coverage & ~isnan(F.eye_head_ang); % Mask based on which eye fixations have good data
-    F.head_ang_all(~mask_eye_coverage,:) = NaN;
-       
-    angles_R = F.head_ang_all;
-    angles_R(~F.R_eye_mask,:) = NaN;
-    angles_L = F.head_ang_all;
-    angles_L(F.R_eye_mask,:) = NaN;
-    
-    saccade_dist_R = angular_diff(angles_R(2:end,:), angles_R(1:end-1,:));
-    saccade_dist_L = angular_diff(angles_L(2:end,:), angles_L(1:end-1,:));
-    saccade_dist_all = [saccade_dist_R(~isnan(saccade_dist_R)); saccade_dist_L(~isnan(saccade_dist_L))];
-    
-    figure;
-    histogram(saccade_dist_all,[0:1:100 inf], 'FaceColor','k'); hold on
-    %      histogram(saccade_dist_R,[0:50 inf], 'FaceColor','r'); hold on
-    %      histogram(saccade_dist_L,[0:50 inf], 'FaceColor','b'); hold on
-    xtext = 30;
-    ytext = max(ylim)*.8;
-    text(xtext, ytext, sprintf('%.1f +- %.1f deg',nanmean(saccade_dist_all), nanstd(saccade_dist_all)))
-    axis square
-    xlabel('Saccade distance (deg)')
-    title(curr_bird)
-    shrink
-    fixticks
-    xlim([0 102])
-    %}
-    
-    
-    
+    % Results single
+%     [H, Ht] = analyzeEyetrack(E, p_pupil, p_cornea, p_beak, Q_raw,  A, ploton);
+%     disp(Ht)
 end
-%%
-%{
 
-    
-end
-%}
+%% Analyze results
+a = strfind(filepath_eye_root,'_');
+filepath_eye = [filepath_eye_root(1:a(end)-1) '_all']
+[H, Ht, stats] = analyzeEyetrack(E_all, p_pupil_all, p_cornea_all, p_beak_all, Q_all,  A, ploton);
+H.folder_eye_calib = folders;
+H.folder_camera_calib = '';
+Ht.folder = filepath_eye;
+disp(Ht)
+disp(stats)
+
+
+%% Save results
+mkdir(filepath_eye)
+save(fullfile(filepath_eye, 'head_calibration.mat'),'-struct','H');
+save(fullfile(filepath_eye, 'head_calibration_template.mat'),'Ht');
+save(fullfile(filepath_eye, 'head_calibration_stats.mat'),'stats');
 

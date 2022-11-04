@@ -1,14 +1,31 @@
-function [p1, p2] = getBeak(filepath, camfilename, p1, p2, ii)
+function beak = getBeak(filepath_eye, camfilename, resume_beak, run_beak)
+
 
 %% PARAMS
 DI = 45; % Number of frames to skip each time
 
+if exist(fullfile(filepath_eye,'beak.mat'),'file')% Add more beak points
+    beak = load(fullfile(filepath_eye,'beak.mat'));
+    if resume_beak
+        p1 = beak.p1;
+        p2 = beak.p2;
+        ii = beak.ii;
+    else
+        return
+    end
+    
+end
+
+if ~run_beak
+    beak = [];
+    return
+end
 
 %% Load the high res video
-cam1 = dir(fullfile(filepath, sprintf(camfilename, 1) ));
-cam2 = dir(fullfile(filepath, sprintf(camfilename, 2) ));
+cam1 = dir(fullfile(filepath_eye, sprintf(camfilename, 1) ));
+cam2 = dir(fullfile(filepath_eye, sprintf(camfilename, 2) ));
 vid1 = VideoReader(fullfile(cam1.folder, cam1.name));
-vid2 = VideoReader(fullfile(cam2.folder,cam2.name));
+vid2 = VideoReader(fullfile(cam2.folder, cam2.name));
 N_eye = min(vid1.NumFrames, vid2.NumFrames);
 
 
@@ -28,6 +45,8 @@ if ~exist('p1','var')
     p1 = NaN(N_eye,2);
     p2 = NaN(N_eye,2);
 end
+
+
 while 1 && ii<N_eye
     % Load image
     I1 = single(rgb2gray(read(vid1,ii)));
@@ -64,7 +83,7 @@ while 1 && ii<N_eye
         end
     end
     
-    save(fullfile(filepath,'beak.mat'),'p1','p2','ii')
+    save(fullfile(filepath_eye,'beak.mat'),'p1','p2','ii')
     
     % Skip ahead a bit
     ii = ii+DI;
@@ -73,6 +92,9 @@ while 1 && ii<N_eye
 end
 
 %% Save results!
-save(fullfile(filepath,'beak.mat'),'p1','p2','ii')
+save(fullfile(filepath_eye,'beak.mat'),'p1','p2','ii')
 
+beak = [];
+beak.p1 = p1;
+beak.p2 = p2;
 
