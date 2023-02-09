@@ -138,16 +138,31 @@ end
 % Convert from camera world coords to common world coords
 p_beak_common = (p_beak - A.p0_eye)*A.R_eye*A.R_45;
 
-% Convert from common world coords to local head coordinatesp_beak_local
+% Convert from common world coords to local rigidbody coordinates
 p_beak_local_all = NaN(N_eye,3);
 for jj = 1:N_eye
     p_beak_local_all(jj,:) = R_rigidbody_common_ds(:,:,jj)'*(p_beak_common(jj,:) - p_rigidbody_common_ds(jj,:))';
 end
 p_beak_local = mean(p_beak_local_all,'omitnan');
+d_beak = sqrt(sum((p_beak_local_all-p_beak_local).^2,2));
+beak_inds = find(~isnan(d_beak));
+beak_dists = d_beak(~isnan(d_beak));
+disp(table(beak_inds, beak_dists))
 
-% Categorize as left and right eye 
+%% Determine orientation and categorize eyes as left and right 
+p_head_local_temp = nanmean(p_eye_local,1); % very approximate
+vx_head_local = (p_beak_local-p_head_local_temp)/norm(p_beak_local-p_head_local_temp);
+flag_reverse = false;
+if dot(vx_head_local, [0 1 0])<0
+    flag_reverse = true;
+end
+
 divide_RL = 10;
-mask_eye_R = p_eye_local(:,1)>divide_RL; % ***Update this automatically?
+if flag_reverse
+    mask_eye_R = p_eye_local(:,1)<divide_RL; % ***Update this automatically?
+else
+    mask_eye_R = p_eye_local(:,1)>divide_RL; % ***Update this automatically?
+end
 
 %% Get mask for eye positions that are out of range
 % max_ant_eye_stds = 2;
@@ -518,7 +533,9 @@ legend('Head','Eye')
 
 %% Plot example: head pos and angular speed with saccades marked
 xlims2 = xlims;
-ang_speed = [0; smooth(abs(diff(yaw_head)*Q_raw.fps_head),5,'moving')];
+yaw_head_unwrap = unwrap(yaw_head*pi/180)*180/pi;
+
+ang_speed = [0; smooth(abs(diff(yaw_head_unwrap)*Q_raw.fps_head),5,'moving')];
 
 P_saccade.a = 60;       % (deg/s) Min angular head speed at saccade peak and at end
 P_saccade.b = 0.5;      % (norm) Max normalized angular speed at start and end of saccade
@@ -530,8 +547,8 @@ S = detectHeadSaccadeRotm(R_head, t_head, P_saccade, 0);
 
 figure;  
 hs = subplot(2,1,1);
-plot(t_head, yaw_head,'k','LineWidth',1.5); ylabel('Yaw (°)'); hold on
-plot(S.time, yaw_head(S.ind), '+r');
+plot(t_head, yaw_head_unwrap,'k','LineWidth',1.5); ylabel('Yaw (°)'); hold on
+plot(S.time, yaw_head_unwrap(S.ind), '+r');
 xlim(xlims2)
 
 hs(2) = subplot(2,1,2);

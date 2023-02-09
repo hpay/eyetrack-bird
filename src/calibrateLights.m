@@ -183,7 +183,7 @@ I = imread(filepathname);
 I = localcontrast(I);
 
 % Detect points
-MinCornerMetric = 0.12;% default 0.15, decrease to get more corner detections
+MinCornerMetric = 0.15;% default 0.15, decrease e.g. 0.12 to get more corner detections
 [u, board_size] = detectCheckerboardPoints(I, 'PartialDetections',true,'MinCornerMetric',MinCornerMetric);
 
 % Reshape x and y

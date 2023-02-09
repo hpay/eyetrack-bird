@@ -78,8 +78,9 @@ function [pupil, CRout, edge_thresh_new,  mean_residual, points, points_fraction
 I = single(I);
 
 if p.smoothSigma
-    gaussian_smooth_image = @(I, sigma) imfilter(I, fspecial('gaussian', [ceil(2.5*sigma) ceil(2.5*sigma)], sigma), 'symmetric');
-    I = gaussian_smooth_image(I, p.smoothSigma);
+%     gaussian_smooth_image = @(I, sigma) imfilter(I, fspecial('gaussian', [ceil(2.5*sigma) ceil(2.5*sigma)], sigma), 'symmetric');
+%     I = gaussian_smooth_image(I, p.smoothSigma);
+    I = imgaussfilt(I, p.smoothSigma);
 end
 
 % 

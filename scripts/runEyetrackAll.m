@@ -46,12 +46,12 @@ for ii  = 1:length(folders)
     
     %% Run eye tracking (will skip if already run)
     resume_beak = 0; % Change to 1 to add more beak points
-    run_beak = 1;
-    
+    run_beak = 1;    
     if ii>1
         run_beak = 0;
     end
-    [E, p_pupil, p_cornea, p_beak] = processEyetrack(filepath_eye, camfilename,  C, resume_beak, run_beak);
+    recalculate = 0;
+    [E, p_pupil, p_cornea, p_beak] = processEyetrack(filepath_eye, camfilename,  C, resume_beak, run_beak, recalculate);
     N_eye = length(E.resid1);
     
     E_all.pupil1 = [E_all.pupil1; E.pupil1];

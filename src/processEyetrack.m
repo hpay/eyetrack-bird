@@ -1,4 +1,4 @@
-function [E, p_pupil, p_cornea, p_beak, p] = processEyetrack(filepath_eye,  camfilename, C,  resume_beak, run_beak)
+function [E, p_pupil, p_cornea, p_beak, p] = processEyetrack(filepath_eye,  camfilename, C,  resume_beak, run_beak, recalculate)
 % Process camera calibration, run eye tracking, and store
 % head/eye/beak calibration for use in gaze analysis
 % 
@@ -15,12 +15,13 @@ beak = getBeak(filepath_eye, camfilename, resume_beak, run_beak);
 
 
 %% Track eye
-if ~exist(fullfile(filepath_eye, 'eye.mat'),'file')     
+if ~exist(fullfile(filepath_eye, 'eye.mat'),'file')  
+    %%
     p = [];
     p.radiiPupil = 32;      % (pixels) 20
-    p.radiiCR = [2 6];          % (pixels) [4 7]
-    p.CRthresh = 10;        % (default 10) Threshold for subtracting background
-    p.CRfilter = 8;         % (default 3, minimum 3). Set larger to detect imperfect circles
+    p.radiiCR = [2 5];          % (pixels) [4 7]
+    p.CRthresh = 12;        % (default 10) Threshold for subtracting background
+    p.CRfilter = 6;         % (default 3, minimum 3). Set larger to detect imperfect circles - but sometimes too large throws an error esp with small radiiCR
     p.CR_box_width = 100;   % (pixels) Crop image for faster CR search
     p.pupil_downsamp = 4;   % (pixels) factor to downsample for initial pupil search
     p.pupil_alpha = 2;      % Sensitivity to radial symmetry. 1 - slack, 3 - strict, ... and you can go higher
@@ -61,7 +62,7 @@ if isempty(beak)
 end
 
 %% Convert pupil and corneal reflections from image to camera world coordinates
-if ~exist(fullfile(filepath_eye,'eye_triangulate.mat'),'file')
+if recalculate || ~exist(fullfile(filepath_eye,'eye_triangulate.mat'),'file')
     p_cornea = NaN(N_eye, 3);
     p_pupil = NaN(N_eye, 3);
     nanmask = ~isnan(E.pupil1(:,1)) & ~isnan(E.cr1(:,1,2)) & ~isnan(E.pupil2(:,1)) & ~isnan(E.cr2(:,1,2));
