@@ -1,15 +1,15 @@
-function [E, p] = trackEye(filepath,p, camfilename)
+function [E, p] = trackEye(filepath_eye,p, camfilename)
 
 close all
-disp(filepath)
+disp(filepath_eye)
 
 video1_filename = sprintf(camfilename, 1); 
 video2_filename = sprintf(camfilename, 2);
 % addpath(fullfile(fileparts(mfilename('fullpath')), 'src'));
 
 % Load the high res video
-cam1 = dir(fullfile(filepath, video1_filename ));
-cam2 = dir(fullfile(filepath, video2_filename ));
+cam1 = dir(fullfile(filepath_eye, video1_filename ));
+cam2 = dir(fullfile(filepath_eye, video2_filename ));
 vid1 = VideoReader(fullfile(cam1.folder, cam1.name));
 vid2 = VideoReader(fullfile(cam2.folder,cam2.name));
 N_eye = min(round(vid1.Duration*vid1.FrameRate), round(vid2.Duration*vid2.FrameRate));
@@ -30,7 +30,7 @@ plot_handles2.ah = subplot(1,2,2);
 set(plot_handles2.ah,'Pos',apos+[0.5 0 0 0]); drawnow
 
 %% Plot an example frame to get pupil and iris thresholds
-p(1).example_t = 6; % Change current time if needed
+p(1).example_t = 4; % Change current time if needed
 pause(0.001);
 I1 = single(rgb2gray(read(vid1, round(p(1).example_t*frameRate))));
 I2 = single(rgb2gray(read(vid2, round(p(1).example_t*frameRate))));
@@ -48,12 +48,12 @@ plot_handles2 = detectPupilCRPlot(I2, p(2), plot_handles2, pupil2_temp, squeeze(
 disp('Adjust pupil and iris intensities and quit/restart if needed')
 
 %%
-keyboard
+% keyboard
 
 clear I1 I2 % to save memory
 
 %% Init
-if ~exist(fullfile(filepath,'eye.mat'),'file')
+if ~exist(fullfile(filepath_eye,'eye.mat'),'file')
     E = [];
     E.pupil1 = NaN(N_eye,5);
     E.cr1 = NaN(N_eye,3, p(1).nCRs);
@@ -65,7 +65,7 @@ if ~exist(fullfile(filepath,'eye.mat'),'file')
     E.points_fraction2 = NaN(N_eye,1);
     ii_start = 1;
 else
-    old = load(fullfile(filepath,'eye.mat'));
+    old = load(fullfile(filepath_eye,'eye.mat'));
     E = old.E;
     if p(1).rerun
         ii_start = 1;
@@ -121,12 +121,12 @@ for ii = ii_start:N_eye
     if mod(ii, 100)==0
         %         total_time = toc;
         %         fprintf('%.2f frames per second processing speed\n',ii/total_time);
-        save(fullfile(filepath,'eye.mat'),'E','p','ii')
+        save(fullfile(filepath_eye,'eye.mat'),'E','p','ii')
     end
 end
 % total_time = toc;
 % fprintf('% frames per second processing speed\n',N_eye/total_time);
-save(fullfile(filepath,'eye.mat'),'E','p')
+save(fullfile(filepath_eye,'eye.mat'),'E','p')
 
 
 %% Plot results

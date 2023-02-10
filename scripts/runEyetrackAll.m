@@ -1,14 +1,13 @@
-function runEyetrackAll(filepath_eye_root, ploton)
+function runEyetrackAll(filepath_eye_root,downsample_eyes, ploton)
 
 % Find all folders with this root
 
 % Loop eye tracking over all of them (just click on beak in the first)--
 % assuming nothing changes between files!
 
-%% May need to change these 
+%% May need to change these
 camfilename = 'cam%i*.avi'; % Filename template for eye cameras
 calib_root = 'Z:\Hannah\eyetrack\calibration'; % Root dir for camera calibrations
-downsample_eye = 6; % Set the downsampling rate at which the eye camera data was collected relative to QTM
 
 data_root = fileparts(filepath_eye_root);
 a = dir(filepath_eye_root);
@@ -37,6 +36,13 @@ for ii  = 1:length(folders)
     filepath_eye = fullfile(data_root, folders{ii});
     disp(filepath_eye)
     
+    % Downsampling between QTM -> eye cameras (usually 5 or 6)
+    if length(downsample_eyes)>1
+        downsample_eye = downsample_eyes(ii);
+    else
+        downsample_eye = downsample_eyes;
+    end
+    
     %% Get camera calibration -- folder must be named same date as recording, e.g. 220831
     temp = strfind(filepath_eye,'_');
     folder_camera_calib = filepath_eye(temp(end)+1:temp(end)+6);
@@ -44,9 +50,23 @@ for ii  = 1:length(folders)
     disp(filepath_camera)
     [C,A] = calibrateCameras(filepath_camera);
     
+    %% Load Qualysis rigid body
+    filename_qtm = 'qtm.mat'; % 6DOF
+    Q = getfield(load(fullfile(filepath_eye,filename_qtm)),'qtm');
+    N_head = Q.Frames;
+    
+    %% Check file lengths
+    cam1 = dir(fullfile(filepath_eye, sprintf(camfilename, 1)));
+    cam2 = dir(fullfile(filepath_eye, sprintf(camfilename, 2)));
+    vid1 = VideoReader(fullfile(cam1.folder,cam1.name)); %#ok
+    vid2 = VideoReader(fullfile(cam2.folder,cam2.name)); %#ok
+    N_eye1 = round(vid1.Duration*vid1.FrameRate);
+    N_eye2 = round(vid2.Duration*vid2.FrameRate);
+    fprintf('Video frames cam1 %i, cam2 %i\nPredicted QTM frames %i, actual QTM frames %i\n', N_eye1, N_eye2, N_eye1*downsample_eye,N_head)
+    
     %% Run eye tracking (will skip if already run)
     resume_beak = 0; % Change to 1 to add more beak points
-    run_beak = 1;    
+    run_beak = 1;
     if ii>1
         run_beak = 0;
     end
@@ -61,26 +81,21 @@ for ii  = 1:length(folders)
     E_all.resid1 = [E_all.resid1; E.resid1];
     E_all.resid2 = [E_all.resid2; E.resid2];
     try
-    E_all.points_fraction1 = [E_all.points_fraction1; E.points_fraction1];
-    E_all.points_fraction2 = [E_all.points_fraction2; E.points_fraction2];
-    catch % Early recordings didn't caculate this                
-    E_all.points_fraction1 = [E_all.points_fraction1; NaN(N_eye,1)];
-    E_all.points_fraction2 = [E_all.points_fraction2; NaN(N_eye,1)];
+        E_all.points_fraction1 = [E_all.points_fraction1; E.points_fraction1];
+        E_all.points_fraction2 = [E_all.points_fraction2; E.points_fraction2];
+    catch % Early recordings didn't calculate this
+        E_all.points_fraction1 = [E_all.points_fraction1; NaN(N_eye,1)];
+        E_all.points_fraction2 = [E_all.points_fraction2; NaN(N_eye,1)];
     end
     p_pupil_all = [p_pupil_all; p_pupil];
     p_cornea_all = [p_cornea_all; p_cornea];
     p_beak_all = [p_beak_all; p_beak];
     
-    %% Load Qualysis rigid body
-    filename_qtm = 'qtm.mat'; % 6DOF
-    Q = getfield(load(fullfile(filepath_eye,filename_qtm)),'qtm');
-    N_head = Q.Frames;
-    fprintf('Eye frames %i, predicted head frames %i, actual head frames %i\n', N_eye, N_eye*downsample_eye,N_head)
-
-    % TODO!!!! Crop if longer than eye cameras
+    % Crop QTM if longer than eye cameras
     if N_head  > N_eye*downsample_eye
+        warning('Cropping QTM')
         Q.RigidBodies.Positions = Q.RigidBodies.Positions(1,:,1:N_eye*downsample_eye);
-        Q.RigidBodies.Rotations = Q.RigidBodies.Rotations(1,:,1:N_eye*downsample_eye);        
+        Q.RigidBodies.Rotations = Q.RigidBodies.Rotations(1,:,1:N_eye*downsample_eye);
         N_head = N_eye*downsample_eye;
     end
     
@@ -95,15 +110,13 @@ for ii  = 1:length(folders)
     Q_all.p_rigidbody = [Q_all.p_rigidbody; Q_raw.p_rigidbody];
     Q_all.R_rigidbody = cat(3, Q_all.R_rigidbody, Q_raw.R_rigidbody); % [X Y Z]
     
-    % Results single
-%     [H, Ht] = analyzeEyetrack(E, p_pupil, p_cornea, p_beak, Q_raw,  A, ploton);
-%     disp(Ht)
+    
 end
 
 %% Analyze results
 a = strfind(filepath_eye_root,'_');
 filepath_eye = [filepath_eye_root(1:a(end)-1) '_all']
-[H, Ht, stats] = analyzeEyetrack(E_all, p_pupil_all, p_cornea_all, p_beak_all, Q_all,  A, ploton);
+[H, Ht, stats] = analyzeEyetrack(E_all, p_pupil_all, p_cornea_all, p_beak_all, Q_all,  A, downsample_eye, ploton);
 H.folder_eye_calib = folders;
 H.folder_camera_calib = '';
 Ht.folder = filepath_eye;

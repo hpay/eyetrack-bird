@@ -1,5 +1,5 @@
 
-function runEyetrackSingle(filepath_eye, ploton)
+function runEyetrackSingle(filepath_eye, downsample_eye, ploton)
 
 %% May need to change these 
 camfilename = 'cam%i*.avi'; % Filename template for eye cameras
@@ -27,7 +27,7 @@ Q_raw.p_rigidbody = squeeze(Q.RigidBodies.Positions(1,:,:))';
 Q_raw.R_rigidbody = reshape(Q.RigidBodies.Rotations(1,:,:), [3,3,Q.Frames]); % [X Y Z]
 
 %% Analyze results
-[H, Ht] = analyzeEyetrack(E, p_pupil, p_cornea, p_beak, Q_raw,  A, ploton);
+[H, Ht] = analyzeEyetrack(E, p_pupil, p_cornea, p_beak, Q_raw,  A, downsample_eye, ploton);
 H.folder_eye_calib = filepath_eye;
 H.folder_camera_calib = filepath_camera;
 Ht.folder = filepath_eye;

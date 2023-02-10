@@ -1,7 +1,7 @@
-function [H, Ht, stats] = analyzeEyetrack(Eraw, p_pupil0, p_cornea0, p_beak,  Q_raw, A, ploton)
+function [H, Ht, stats] = analyzeEyetrack(Eraw, p_pupil0, p_cornea0, p_beak,  Q_raw, A, downsample_eye,ploton)
 
 % Params
-downsample_eye = 6; % Set the downsampling rate at which the eye camera data was collected relative to QTM
+% downsample_eye = 6; % Set the downsampling rate at which the eye camera data was collected relative to QTM
 dir_figures = fullfile(fileparts(fileparts(which(mfilename))), 'results');
 mkdir(dir_figures)
 
