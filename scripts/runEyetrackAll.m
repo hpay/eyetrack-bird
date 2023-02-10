@@ -1,9 +1,9 @@
-function runEyetrackAll(filepath_eye_root,downsample_eyes, ploton)
-
-% Find all folders with this root
-
-% Loop eye tracking over all of them (just click on beak in the first)--
-% assuming nothing changes between files!
+function runEyetrackAll(filepath_eye_root,downsample_eye, ploton)
+% Loop eye tracking over all of the files starting with given string 
+% filepath_eye_root - find all folders with this root
+% downsample_eye - downsampling between QTM -> eye cameras (usually 5 or 6) - must be the
+% same for all files to be combined
+% ploton - make plots
 
 %% May need to change these
 camfilename = 'cam%i*.avi'; % Filename template for eye cameras
@@ -36,13 +36,7 @@ for ii  = 1:length(folders)
     filepath_eye = fullfile(data_root, folders{ii});
     disp(filepath_eye)
     
-    % Downsampling between QTM -> eye cameras (usually 5 or 6)
-    if length(downsample_eyes)>1
-        downsample_eye = downsample_eyes(ii);
-    else
-        downsample_eye = downsample_eyes;
-    end
-    
+   
     %% Get camera calibration -- folder must be named same date as recording, e.g. 220831
     temp = strfind(filepath_eye,'_');
     folder_camera_calib = filepath_eye(temp(end)+1:temp(end)+6);

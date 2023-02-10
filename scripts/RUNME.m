@@ -11,18 +11,18 @@ filepath_camera = 'Z:\Hannah\eyetrack\calibration\230210';
 %% Run a single eye tr acking file
 % dir_root = 'HC08_221028b'; %IND102_220707a
 % dir_root = 'HC11_230201a';
-% downsample_eye = 6;
-% runEyetrackSingle(fullfile(data_root, dir_root),downsample_eye, ploton)
+dir_root = 'HC12_230210a';
+downsample_eye = 6;
+runEyetrackSingle(fullfile(data_root, dir_root),downsample_eye, ploton)
 
 %% Run a set of eye tracking files for the same bird
 % dir_root = 'HC07_23*'; % Best example HC07?
 % dir_root = 'HC10_22*'; 
-% dir_root = 'HC11_*'; 
+% dir_root = 'HC11_2*'; 
 % downsample_eye = 6;
 
-dir_root = 'HC12_*';
-downsample_eye = [5 6]; % Set the downsampling rate at which the eye camera data was collected relative to QTM
-
+dir_root = 'HC12_2*';
+downsample_eye = 5; % Set the downsampling rate at which the eye camera data was collected relative to QTM
 runEyetrackAll(fullfile(data_root, dir_root),downsample_eye, ploton)
 
 return

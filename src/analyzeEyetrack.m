@@ -307,7 +307,6 @@ grid on
 
 
 %% Save as a template for use with old data:
-% TODO: check this, something is not right with eye and beak Phi angles
 Ht = table;
 vx_template_local = (p_beak_local-p_meaneye_local)/norm(p_beak_local-p_meaneye_local);
 
@@ -328,27 +327,8 @@ Ht.p_head =  (R_template_local'*(p_head_local(:)-p_meaneye_local(:)))'; % eye-in
 % Set y coordinate to zero because it should be symmetric -- equivalent to
 % averaging vectors from both eyes?
 Ht.p_head(2)  = 0;
-% 
-% 
-% 
-% % OR get the intersection point of the two eye vectors:
-% v_template_meanL = [v_template_L+v_template_R.*[1 -1 1]']/2;
-% v_template_meanR = v_template_meanL.*[1 -1 1]'
-% A1 = p_eye_R_local;
-% A2 = p_eye_R_local+v_eye_R_local;
-% B1 = p_eye_L_local;
-% B2 = p_eye_L_local+v_eye_L_local;
-% nA = dot(cross(B2-B1,A1-B1)',cross(A2-A1,B2-B1)')';
-% nB = dot(cross(A2-A1,A1-B1)',cross(A2-A1,B2-B1)')';
-% d = dot(cross(A2-A1,B2-B1)',cross(A2-A1,B2-B1)')';
-% A0 = A1 + bsxfun(@times, nA./d, A2-A1);
-% B0 = B1 + bsxfun(@times, nB./d, B2-B1);
-% p_head_local = (A0+B0)/2; 
-
-
 
 theta_phi = @(v) [atan2d(v(2,:), v(1,:)); acosd(v(3,:)/norm(v))];
-
 theta_phi_L = theta_phi(v_template_L);
 theta_phi_R = theta_phi(v_template_R);
 theta_phi_beak = theta_phi(v_template_beak);
@@ -356,8 +336,6 @@ theta_phi_beak = theta_phi(v_template_beak);
 % Take the average theta and phi of both eyes and beak
 theta_eye = (theta_phi_L(1)-theta_phi_R(1))/2;
 phi_eye = mean([theta_phi_L(2) theta_phi_R(2)]);
-% all_phis = [theta_phi_L(2) theta_phi_R(2) theta_phi_beak(2)]
-% phi_eye_beak = mean(all_phis);
 
 Ht.theta_beak = 0;
 Ht.theta_eye = theta_eye;
