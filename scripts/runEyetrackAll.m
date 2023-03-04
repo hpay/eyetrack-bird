@@ -4,6 +4,7 @@ function runEyetrackAll(filepath_eye_root,downsample_eye, ploton)
 % downsample_eye - downsampling between QTM -> eye cameras (usually 5 or 6) - must be the
 % same for all files to be combined
 % ploton - make plots
+% x axis = mean of p_eyes to beak. y axis pointing left, z axis up
 
 %% May need to change these
 camfilename = 'cam%i*.avi'; % Filename template for eye cameras
