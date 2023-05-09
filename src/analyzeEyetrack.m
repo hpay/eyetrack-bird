@@ -160,8 +160,10 @@ end
 divide_RL = 10;
 if flag_reverse
     mask_eye_R = p_eye_local(:,1)<divide_RL; % ***Update this automatically?
+    mask_eye_L = p_eye_local(:,1)>divide_RL;
 else
     mask_eye_R = p_eye_local(:,1)>divide_RL; % ***Update this automatically?
+    mask_eye_L = p_eye_local(:,1)<divide_RL;
 end
 
 %% Get mask for eye positions that are out of range
@@ -179,8 +181,8 @@ dashedline(divide_RL, ylim,6,'Color','c');
 dashedline(getMin(p_eye_local(mask_eye_R,1)), ylim,6,'Color','r');
 dashedline(getMax(p_eye_local(mask_eye_R,1)), ylim,6,'Color','r');
 
-dashedline(getMin(p_eye_local(~mask_eye_R,1)), ylim,6,'Color','r');
-dashedline(getMax(p_eye_local(~mask_eye_R,1)), ylim,6,'Color','r');
+dashedline(getMin(p_eye_local(mask_eye_L,1)), ylim,6,'Color','r');
+dashedline(getMax(p_eye_local(mask_eye_L,1)), ylim,6,'Color','r');
 
 subplot(3,1,2)
 histogram(p_eye_local(:,2), [-inf 5:.2:12 inf]); xlabel('p_eye_local (y coord/anterior pos, mm)','interp','none')
@@ -197,9 +199,9 @@ dashedline(getMax(p_eye_local(:,3)), ylim,6,'Color','r');
 
 
 % Mask Anterior
-mask_lateral = NaN(length(p_eye_local),1);
+mask_lateral = false(length(p_eye_local),1);
 mask_lateral(mask_eye_R) =  p_eye_local(mask_eye_R,1)>getMax(p_eye_local(mask_eye_R,1)) | p_eye_local(mask_eye_R,1)<getMin(p_eye_local(mask_eye_R,1));
-mask_lateral(~mask_eye_R) =  p_eye_local(~mask_eye_R,1)>getMax(p_eye_local(~mask_eye_R,1)) | p_eye_local(~mask_eye_R,1)<getMin(p_eye_local(~mask_eye_R,1));
+mask_lateral(mask_eye_L) =  p_eye_local(mask_eye_L,1)>getMax(p_eye_local(mask_eye_L,1)) | p_eye_local(mask_eye_L,1)<getMin(p_eye_local(mask_eye_L,1));
 
 mask_anterior= p_eye_local(:,2)>getMax(p_eye_local(:,2)) | p_eye_local(:,2)<getMin(p_eye_local(:,2)) ;
 mask_dorsal= p_eye_local(:,3)>getMax(p_eye_local(:,3)) | p_eye_local(:,3)<getMin(p_eye_local(:,3)) ;
@@ -208,14 +210,23 @@ mask_median_pos = mask_lateral | mask_anterior | mask_dorsal;
 p_eye_local(mask_median_pos,:) = NaN;
 v_eye_local(mask_median_pos,:) = NaN;
 
+% Update L/R eye masks to exclude NaNs
+if flag_reverse
+    mask_eye_R = p_eye_local(:,1)<divide_RL; % ***Update this automatically?
+    mask_eye_L = p_eye_local(:,1)>divide_RL;
+else
+    mask_eye_R = p_eye_local(:,1)>divide_RL; % ***Update this automatically?
+    mask_eye_L = p_eye_local(:,1)<divide_RL;
+end
+
 %% Store the mean vector and origin for each eye, plus the average beak location, in the head frame
 
 
 % Get means for each eye
 p_eye_R_local = mean(p_eye_local(mask_eye_R,:),1,'omitnan');
-p_eye_L_local = mean(p_eye_local(~mask_eye_R,:),1,'omitnan');
+p_eye_L_local = mean(p_eye_local(mask_eye_L,:),1,'omitnan');
 v_eye_R_local = mean(v_eye_local(mask_eye_R,:),1,'omitnan'); v_eye_R_local = v_eye_R_local/norm(v_eye_R_local);
-v_eye_L_local = mean(v_eye_local(~mask_eye_R,:),1,'omitnan'); v_eye_L_local = v_eye_L_local/norm(v_eye_L_local);
+v_eye_L_local = mean(v_eye_local(mask_eye_L,:),1,'omitnan'); v_eye_L_local = v_eye_L_local/norm(v_eye_L_local);
 
 % Get the mean "head position": the mean of the two eyes
 p_meaneye_local = mean([p_eye_R_local; p_eye_L_local]);
@@ -231,6 +242,7 @@ d = dot(cross(A2-A1,B2-B1)',cross(A2-A1,B2-B1)')';
 A0 = A1 + bsxfun(@times, nA./d, A2-A1);
 B0 = B1 + bsxfun(@times, nB./d, B2-B1);
 p_head_local = (A0+B0)/2; 
+
 
 
 %% Get the mean "head vector": from mean of eyes to beak
@@ -267,7 +279,7 @@ H.v_eye_L_head = H.R_head'*H.v_eye_L;
 % theta_phi_L = theta_phi(H.v_eye_L_head)
 % theta_phi_R = theta_phi(H.v_eye_R_head)
 
-%% Plot local eye position in 3d
+%% Plot local eye position in 3d (in rigid body coordinates)
 figure;
 %     scatter3(p_eye_local(:,1),p_eye_local(:,2), p_eye_local(:,3),10, E.t); hold on;% Plot the raw data points
 ds = 6; % downsample for plotting
@@ -275,7 +287,9 @@ ds = 6; % downsample for plotting
 scatter3(p_eye_local(1:ds:end,1),p_eye_local(1:ds:end,2), p_eye_local(1:ds:end,3),30, 'k.'); hold on;% Plot the raw data points
 for ii = 1:ds:length(E.t)
     if ~isnan(p_eye_local(ii,1))
-        plot3(p_eye_local(ii,1) + [0 v_eye_local(ii,1)],p_eye_local(ii,2)+ [0 v_eye_local(ii,2)], p_eye_local(ii,3)+ [0 v_eye_local(ii,3)],'k','LineWidth',.25);
+        plot3(p_eye_local(ii,1) + [0 v_eye_local(ii,1)], ...
+            p_eye_local(ii,2)+ [0 v_eye_local(ii,2)],...
+            p_eye_local(ii,3)+ [0 v_eye_local(ii,3)],'k','LineWidth',.25);
     end
 end
 
@@ -304,7 +318,80 @@ view([0 0 1])
 view([1 0 0])
 grid on
 
+%% Plot local eye position in 2d (in head coordinates)
 
+% Get local vectors of eye relative to head
+v_eye_local_head = (H.R_head'*v_eye_local')';
+p_eye_local_head = (H.R_head'*(p_eye_local - p_head_local)')';
+p_eye_R_head = H.R_head'*(H.p_eye_R - p_head_local(:));
+p_eye_L_head = H.R_head'*(H.p_eye_L - p_head_local(:));
+v_beak_head = H.R_head'*vx_head_local'; % should be [1 0 0]
+color_pts = [67 127 138]/255;
+a = 6; % length mean eyes
+c = 6; % length individ eyes
+b = norm(p_beak_local-p_head_local); % length beak
+msize = 20;
+lw = 1;
+
+% Top view
+figure;
+ds = 6; % downsample for plotting
+scatter(p_eye_local_head(1:ds:end,1),p_eye_local_head(1:ds:end,2),20,color_pts,'filled'); hold on;% Plot the raw data points
+for ii = 1:ds:length(E.t)
+    if ~isnan(p_eye_local_head(ii,1))
+        plot(p_eye_local_head(ii,1) + c*[0 v_eye_local_head(ii,1)],...
+            p_eye_local_head(ii,2)+ c*[0 v_eye_local_head(ii,2)],'Color',color_pts,'LineWidth',.25);
+    end
+end
+
+% Plot eye means
+scatter(p_eye_R_head(1), p_eye_R_head(2),msize, 'oc','Filled')
+scatter(p_eye_L_head(1), p_eye_L_head(2),  msize, 'oc','Filled')
+plot(p_eye_R_head(1)+[0 H.v_eye_R_head(1)*a], p_eye_R_head(2)+[0 H.v_eye_R_head(2)*a], '-c','LineWidth',lw) % Plot the mean local eye vectors
+plot(p_eye_L_head(1)+[0 H.v_eye_L_head(1)*a], p_eye_L_head(2)+[0 H.v_eye_L_head(2)*a],'-c','LineWidth',lw)
+
+% Plot beak
+scatter(0,0, msize, 'ok','Filled')
+plot([0 v_beak_head(1)*b], [0 v_beak_head(2)*b], '-k','LineWidth',lw)
+
+xlabel('x position (mm)');   ylabel('y position (mm)'); 
+set(gca,'Pos',[0.1 0.2 .7 .7])
+shrink
+view(-90, 90) %# Swap the axes
+set(gca, 'ydir', 'reverse');
+axis equal;
+xlim([-2 19]); ylim(11*[-1 1])
+set(gca,'XTick',0:5:15,'YTick',-10:5:10)
+fixticks
+
+% Side view
+figure;
+ds = 6; % downsample for plotting
+scatter(p_eye_local_head(1:ds:end,1),p_eye_local_head(1:ds:end,3),20,color_pts,'filled'); hold on;% Plot the raw data points
+for ii = 1:ds:length(E.t)
+    if ~isnan(p_eye_local_head(ii,1))
+        plot(p_eye_local_head(ii,1) + c*[0 v_eye_local_head(ii,1)],...
+            p_eye_local_head(ii,3)+ c*[0 v_eye_local_head(ii,3)],'Color',color_pts,'LineWidth',.25);
+    end
+end
+
+% Plot eye means
+scatter(p_eye_R_head(1), p_eye_R_head(3),msize, 'oc','Filled')
+scatter(p_eye_L_head(1), p_eye_L_head(3),  msize, 'oc','Filled')
+plot(p_eye_R_head(1)+[0 H.v_eye_R_head(1)*a], p_eye_R_head(3)+[0 H.v_eye_R_head(3)*a], '-c','LineWidth',lw) % Plot the mean local eye vectors
+plot(p_eye_L_head(1)+[0 H.v_eye_L_head(1)*a], p_eye_L_head(3)+[0 H.v_eye_L_head(3)*a],'-c','LineWidth',lw)
+
+% Plot beak
+scatter(0,0, msize, 'ok','Filled')
+plot([0 v_beak_head(1)*b], [0 v_beak_head(3)*b], '-k','LineWidth',lw)
+
+xlabel('x position (mm)');   ylabel('z position (mm)'); 
+set(gca,'Pos',[0.1 0.2 .7 .7])
+shrink
+axis equal; 
+xlim([-2 19]); ylim(11*[-1 1])
+set(gca,'XTick',0:5:15,'YTick',-10:5:10)
+fixticks
 
 %% Save as a template for use with old data:
 Ht = table;
@@ -346,15 +433,15 @@ Ht.phi_eye = phi_eye;
 %% Scatter plot of gaze in polar coords
 figure('Units','Centi','Pos',[14   12   16   8]); 
 hs  = gobjects(1,2);
-dists= [];
+dists= {};
 nframes= [];
 for which_eye  = [0 1]
     if which_eye == 1
-        mask = mask_eye_R & ~isnan(v_eye_local(:,1));
+        mask = mask_eye_R;
         theta_mean = atan2d(H.v_eye_R_head(2), H.v_eye_R_head(1));
         phi_mean = acosd(H.v_eye_R_head(3));
     else
-        mask = ~mask_eye_R & ~isnan(v_eye_local(:,1));
+        mask = mask_eye_L;
         theta_mean = atan2d(H.v_eye_L_head(2), H.v_eye_L_head(1));
         phi_mean = acosd(H.v_eye_L_head(3));
     end
@@ -363,7 +450,7 @@ for which_eye  = [0 1]
     v_eye_local_head = H.R_head'*v_eye_local';    
     theta = atan2d(v_eye_local_head(2,mask), v_eye_local_head(1,mask));
     phi = acosd(v_eye_local_head(3,mask));    
-    nframes(which_eye+1) = length(theta);
+    nframes(which_eye+1) = nnz(mask);
     hs(which_eye+1) = subplot(1,2,which_eye+1);
 %     plot(theta-theta_mean, phi-phi_mean,'co','MarkerSize',2,'Color',[0 1 1 1])
     scatter(theta-theta_mean, phi-phi_mean,9, 'c','MarkerEdgeAlpha',.3)
@@ -375,22 +462,19 @@ for which_eye  = [0 1]
     
     std_thetas(which_eye+1) = nanstd(theta);
     std_phis(which_eye+1) = nanstd(phi);    
-    dists = [dists sqrt((theta-theta_mean).^2+(phi-phi_mean).^2)];
+    dists{which_eye+1} = sqrt((theta-theta_mean).^2+(phi-phi_mean).^2);
 end
 set(hs,'TickLength',[0 0])
 set(hs,'XTick',-30:10:30,'YTick',-30:10:30)
 set(hs,'XTickLabelRotationMode','manual')
-mean_dist = nanmean(dists);
-std_theta = mean(std_thetas);
-std_phi = mean(std_phis);
-fprintf('Std horiz ang. %.2f deg, Std vert ang. %.2f deg, Mean distance %.2f deg\n',std_theta, std_phi, mean_dist)
+mean_dist = cellfun(@mean,dists);
+fprintf('Std horiz ang. %.2f %.2f deg, Std vert ang. %.2f %.2f deg (L/R)\n',std_thetas, std_phis)
 
 stats = table;
-stats.std_theta = std_theta;
-stats.std_phi = std_phi;
-stats.mean_dist = mean_dist;
-stats.nframes = sum(nframes);
-
+stats.std_theta = std_thetas;
+stats.std_phi = std_phis;
+stats.nframes = nframes;
+fixticks
 % export_fig(fullfile(dir_figures,'eye_scatter.png'),'-r300') % Careful not to
 % overwrite earlier examples - run posterDefaults first
 %%
@@ -401,12 +485,12 @@ figure
 h_angle_eye_local = atan2d(v_eye_local(:,2), v_eye_local(:,1)); % in deg
 h_angle_eye_local = wrapTo180(90-h_angle_eye_local);
 h_angle_eye_local_R = nanmean(h_angle_eye_local(mask_eye_R)); % in deg
-h_angle_eye_local_L = nanmean(h_angle_eye_local(~mask_eye_R)); % in deg
+h_angle_eye_local_L = nanmean(h_angle_eye_local(mask_eye_L)); % in deg
 ylims1 = [-1 1]*.8;
 msize = 5;
 
 hs = subplot(1,2,1);
-plot(h_angle_eye_local(~mask_eye_R),p_eye_local(~mask_eye_R,2)-p_eye_L_local(2),'c.','MarkerSize',msize);
+plot(h_angle_eye_local(mask_eye_L),p_eye_local(mask_eye_L,2)-p_eye_L_local(2),'c.','MarkerSize',msize);
 xlabel('Horizontal angle (°)')
 ylabel('Anterior pos. (mm)')
 title('L eye')
@@ -422,7 +506,12 @@ grid on; axis square
 
 set(hs,'YTick',-.8:.4:.8)
 set(hs,'TickLength',[0 0])
+fixticks
 
+[rhoL, pvalL] = corrcoef(h_angle_eye_local(mask_eye_L), p_eye_local(mask_eye_L,2));
+[rhoR, pvalR] = corrcoef(h_angle_eye_local(mask_eye_R), p_eye_local(mask_eye_R,2));
+stats.antpos_hang_r = [rhoL(2) rhoR(2)];
+stats.antpos_hang_p = [pvalL(2) pvalR(2)];
 % export_fig(fullfile(dir_figures,'eye_shift.pdf'),'-r300') % Careful not to
 
 %%
