@@ -5,7 +5,7 @@ addpath(fullfile(code_root,'src'));
 ploton = 1;
 
 %% Process a single calibration of cameras
-filepath_camera = 'Z:\Hannah\eyetrack\calibration\230210';
+filepath_camera = 'Z:\Hannah\eyetrack\calibration\230525';
 [C,A] = calibrateCameras(filepath_camera);
 
 %% Run a single eye tr acking file
@@ -13,21 +13,25 @@ filepath_camera = 'Z:\Hannah\eyetrack\calibration\230210';
 
 % dir_root = 'IND102_220707a';
 % downsample_eye = 6;
-
-dir_root = 'HC07_221013';
-downsample_eye = 6;
+% 
+% dir_root = 'HC07_221013';
+% downsample_eye = 6;
 
 % dir_root = 'HC11_230201a';
 % downsample_eye = 6;
 
 % dir_root = 'HC12_230210a';
 % downsample_eye = 5;
+
+dir_root = 'HC13_230525';
+downsample_eye = 6;
 runEyetrackSingle(fullfile(data_root, dir_root),downsample_eye, ploton)
 
 %% Run a set of eye tracking files for the same bird
 % dir_root = 'HC07_23*'; % Best example HC07?
 % dir_root = 'HC10_22*'; 
-dir_root = 'HC11_2*'; 
+% dir_root = 'HC11_2*'; 
+dir_root = 'HC13_2*'; 
 downsample_eye = 6;
 
 % dir_root = 'HC12_2*';
