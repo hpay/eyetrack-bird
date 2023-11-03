@@ -1,5 +1,5 @@
 
-function runEyetrackSingle(filepath_eye, downsample_eye, ploton)
+function runEyetrackSingle(filepath_eye, downsample_eye)
 
 %% May need to change these 
 camfilename = 'cam%i*.avi'; % Filename template for eye cameras
@@ -14,7 +14,7 @@ filepath_camera = fullfile(calib_root, folder_camera_calib)
 %% Run eye tracking (will skip if already run)
 resume_beak = 0;
 run_beak = 1;
-recalculate = 0;
+recalculate = 1;
 [E, p_pupil, p_cornea, p_beak] = processEyetrack(filepath_eye, camfilename,  C, resume_beak, run_beak, recalculate);
 
 %% Load Qualysis rigid body
@@ -27,12 +27,11 @@ Q_raw.p_rigidbody = squeeze(Q.RigidBodies.Positions(1,:,:))';
 Q_raw.R_rigidbody = reshape(Q.RigidBodies.Rotations(1,:,:), [3,3,Q.Frames]); % [X Y Z]
 
 %% Analyze results
-[H, Ht] = analyzeEyetrack(E, p_pupil, p_cornea, p_beak, Q_raw,  A, downsample_eye, ploton);
+[H, Ht] = analyzeEyetrack(E, p_pupil, p_cornea, p_beak, Q_raw,  A, downsample_eye);
 H.folder_eye_calib = filepath_eye;
 H.folder_camera_calib = filepath_camera;
 Ht.folder = filepath_eye;
 disp(Ht)
-
 
 %% Save results
 save(fullfile(filepath_eye, 'head_calibration.mat'),'-struct','H');

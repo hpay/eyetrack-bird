@@ -49,6 +49,11 @@ else
     temp = load(fullfile(filepath_eye,'eye.mat'));
     E = temp.E;
     p = temp.p;
+    
+    % To resume where we left off
+    if isfield(temp,'ii') && recalculate
+    [E,p] = trackEye(filepath_eye, p, camfilename); % TRACK THE PUPIL AND CR
+    end
 end
 
 N_eye = length(E.pupil1(:,1));

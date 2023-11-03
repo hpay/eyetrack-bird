@@ -111,7 +111,7 @@ end
 %% Analyze results
 a = strfind(filepath_eye_root,'_');
 filepath_eye = [filepath_eye_root(1:a(end)-1) '_all']
-[H, Ht, stats] = analyzeEyetrack(E_all, p_pupil_all, p_cornea_all, p_beak_all, Q_all,  A, downsample_eye, ploton);
+[H, Ht, stats] = analyzeEyetrack(E_all, p_pupil_all, p_cornea_all, p_beak_all, Q_all,  A, downsample_eye);
 H.folder_eye_calib = folders;
 H.folder_camera_calib = '';
 Ht.folder = filepath_eye;
