@@ -43,7 +43,7 @@ for ii  = 1:length(folders)
     folder_camera_calib = filepath_eye(temp(end)+1:temp(end)+6);
     filepath_camera = fullfile(calib_root, folder_camera_calib);
     disp(filepath_camera)
-    [C,A] = calibrateCameras(filepath_camera);
+    [C, A] = calibrateCameras(filepath_camera);
     
     %% Load Qualysis rigid body
     filename_qtm = 'qtm.mat'; % 6DOF
@@ -65,8 +65,8 @@ for ii  = 1:length(folders)
     if ii>1
         run_beak = 0;
     end
-    recalculate = 0;
-    [E, p_pupil, p_cornea, p_beak] = processEyetrack(filepath_eye, camfilename,  C, resume_beak, run_beak, recalculate);
+    resume_eye = 0;
+    [E, p_pupil, p_cornea, p_beak] = processEyetrack(filepath_eye, camfilename,  C, resume_beak, run_beak, resume_eye);
     N_eye = length(E.resid1);
     
     E_all.pupil1 = [E_all.pupil1; E.pupil1];
@@ -108,7 +108,7 @@ for ii  = 1:length(folders)
     
 end
 
-%% Analyze results
+%% Analyze results - TODO: apply calibrations to each file separately then combine!!
 a = strfind(filepath_eye_root,'_');
 filepath_eye = [filepath_eye_root(1:a(end)-1) '_all']
 [H, Ht, stats] = analyzeEyetrack(E_all, p_pupil_all, p_cornea_all, p_beak_all, Q_all,  A, downsample_eye);

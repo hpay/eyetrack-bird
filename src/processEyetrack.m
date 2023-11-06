@@ -1,7 +1,7 @@
-function [E, p_pupil, p_cornea, p_beak, p] = processEyetrack(filepath_eye,  camfilename, C,  resume_beak, run_beak, recalculate)
+function [E, p_pupil, p_cornea, p_beak, p] = processEyetrack(filepath_eye,  camfilename, C,  resume_beak, run_beak, resume_eye)
 % Process camera calibration, run eye tracking, and store
 % head/eye/beak calibration for use in gaze analysis
-% 
+%
 % Returns the estimated 3d locations of pupil, center of corneal curvature,
 % and beak (uncleaned)
 %
@@ -15,7 +15,7 @@ beak = getBeak(filepath_eye, camfilename, resume_beak, run_beak);
 
 
 %% Track eye
-if ~exist(fullfile(filepath_eye, 'eye.mat'),'file')  
+if ~exist(fullfile(filepath_eye, 'eye.mat'),'file')
     %%
     p = [];
     p.radiiPupil = 32;      % (pixels) 20
@@ -35,7 +35,6 @@ if ~exist(fullfile(filepath_eye, 'eye.mat'),'file')
     p.min_edge_thresh = 6;
     p.plot_on = 1;
     p.debug_on = 0;
-    p.rerun = 1;                % 1 to restart from the first frame, 0 to continue from end
     p.pupil_start = [NaN NaN];
     p(2) = p(1); % Same settings for the second camera
     
@@ -51,8 +50,8 @@ else
     p = temp.p;
     
     % To resume where we left off
-    if isfield(temp,'ii') && recalculate
-    [E,p] = trackEye(filepath_eye, p, camfilename); % TRACK THE PUPIL AND CR
+    if isfield(temp,'ii') && resume_eye
+        [E,p] = trackEye(filepath_eye, p, camfilename); % TRACK THE PUPIL AND CR
     end
 end
 
@@ -67,7 +66,7 @@ if isempty(beak)
 end
 
 %% Convert pupil and corneal reflections from image to camera world coordinates
-if recalculate || ~exist(fullfile(filepath_eye,'eye_triangulate.mat'),'file')
+if resume_eye || ~exist(fullfile(filepath_eye,'eye_triangulate.mat'),'file')
     p_cornea = NaN(N_eye, 3);
     p_pupil = NaN(N_eye, 3);
     nanmask = ~isnan(E.pupil1(:,1)) & ~isnan(E.cr1(:,1,2)) & ~isnan(E.pupil2(:,1)) & ~isnan(E.cr2(:,1,2));

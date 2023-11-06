@@ -1,7 +1,7 @@
 function  A = calibrateAxesBW(filepath_axes, stereo_params, thresh)
 
 
-%% Get the axes in the head reference frame
+%% Get the axes in the QTM reference frame
 rprops1 = dir(fullfile(filepath_axes, '*.mat'));
 A_head = getfield(load(fullfile(filepath_axes, rprops1.name)),rprops1.name(1:end-4));
 p0_head  = mean(A_head.Trajectories.Labeled.Data(strcmp(A_head.Trajectories.Labeled.Labels,'p0'),1:3,:),3);
@@ -10,7 +10,7 @@ p2_head  = mean(A_head.Trajectories.Labeled.Data(strcmp(A_head.Trajectories.Labe
 
 p_head = [p0_head; p1_head; p2_head];
 
-fprintf('HEAD AXES: x dist: %.2f mm, y dist %.2f mm\n',sqrt(sum((p1_head-p0_head).^2)), sqrt(sum((p2_head-p0_head).^2)))
+fprintf('QTM AXES: x dist: %.2f mm, y dist %.2f mm\n',sqrt(sum((p1_head-p0_head).^2)), sqrt(sum((p2_head-p0_head).^2)))
 
 vx_head = (p1_head-p0_head)/norm(p1_head-p0_head);
 vy_head_temp = (p2_head-p0_head)/norm(p2_head-p0_head);
@@ -23,7 +23,7 @@ R_head = [vx_head(:) vy_head(:) vz_head(:)];
 % Rotate 45 deg around x axis
 R_45 = [1 0 0; 0 cosd(315) -sind(315); 0 sind(315) cosd(315)];
 
-%% Eye reference frame
+%% Dual camera reference frame
 temp1 = dir(fullfile(filepath_axes, 'cam1.bmp'));
 temp2 = dir(fullfile(filepath_axes, 'cam2.bmp'));
 
@@ -94,7 +94,7 @@ title('Camera 2')
 scatter(p_eye2(:,1),p_eye2(:,2), 50,[1 0 0; 0 1 0; 0 0 1],'filled')
 
 
-%% Undistort and triangulate eye points
+%% Undistort and triangulate points in dual camera reference frame
 [p_eye, reprojection_errors] = triangulate(undistortPoints(p_eye1,stereo_params.CameraParameters1),...
     undistortPoints(p_eye2,stereo_params.CameraParameters2),stereo_params);
 

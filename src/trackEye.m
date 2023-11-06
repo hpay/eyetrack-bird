@@ -67,13 +67,9 @@ if ~exist(fullfile(filepath_eye,'eye.mat'),'file')
 else
     old = load(fullfile(filepath_eye,'eye.mat'));
     E = old.E;
-    if p(1).rerun
-        ii_start = 1;
-    else
-        ii_start = find(~isnan(E.pupil1(:,1)),1, 'last')+1;
-        p(1).pupil_start = old.p(1).pupil_start;
-        p(2).pupil_start = old.p(2).pupil_start;
-    end
+    ii_start = find(~isnan(E.pupil1(:,1)),1, 'last')+1;
+    p(1).pupil_start = old.p(1).pupil_start;
+    p(2).pupil_start = old.p(2).pupil_start;
     clear old
 end
 %}

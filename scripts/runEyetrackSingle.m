@@ -14,8 +14,9 @@ filepath_camera = fullfile(calib_root, folder_camera_calib)
 %% Run eye tracking (will skip if already run)
 resume_beak = 0;
 run_beak = 1;
-recalculate = 1;
-[E, p_pupil, p_cornea, p_beak] = processEyetrack(filepath_eye, camfilename,  C, resume_beak, run_beak, recalculate);
+resume_eye = 1;
+
+[E, p_pupil, p_cornea, p_beak] = processEyetrack(filepath_eye, camfilename,  C, resume_beak, run_beak, resume_eye);
 
 %% Load Qualysis rigid body
 filename_qtm = 'qtm.mat'; % 6DOF

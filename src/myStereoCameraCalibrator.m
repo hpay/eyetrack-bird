@@ -5,9 +5,9 @@ function stereoParams = myStereoCameraCalibrator(folder1,folder2,square_size)
 
 % Define images to process
 d1 = dir(fullfile(folder1));
-imageFileNames1 = cellfun(@(x) fullfile(folder1, x), {d1(~[d1.isdir]).name},'Uni',0);
+imageFileNames1 = cellfun(@(x) fullfile(folder1, x), {d1(~[d1.isdir] & ~endsWith({d1.name}, '.db')).name},'Uni',0);
 d2 = dir(fullfile(folder2));
-imageFileNames2 = cellfun(@(x) fullfile(folder2, x), {d2(~[d2.isdir]).name},'Uni',0);
+imageFileNames2 = cellfun(@(x) fullfile(folder2, x), {d2(~[d2.isdir] & ~endsWith({d1.name}, '.db')).name},'Uni',0);
 
 
 

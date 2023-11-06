@@ -4,6 +4,21 @@
 % 2. Find position of IR lights in the world
 % 3. Define common reference frame using simultaneous QTM measurement
 %
+% Returns: 
+% C: camera calibrations
+% A: co-registration of qtm and dual camera system axes
+% A.R_eye: rotation matrix for axes as seen by dual cameras
+% A.R_head: rotation matrix for axes as seen by QTM
+% A.R_45: an intermediate step
+% A.p0_eye: origin location for axes as seen by dual cameras
+% A.p0_head: origin for axes as seen by QTM
+%
+% All QTM measurements ("head") are relative to the QTM reference frame (defined by the
+% separate calibration step conducted in QTM using the triangle and wand)
+%
+% All dual camera ("eye") measurements are relative to the dual camera
+% reference frame (defined by the camera calibrations C)
+% 
 % Hannah Payne, Aronov Lab 2022
 
 function [C,A] = calibrateCameras(filepath_camera_calib)
