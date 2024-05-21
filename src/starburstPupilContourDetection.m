@@ -1,4 +1,32 @@
-% Starburst Algorithm
+% Starburst Algorithm 
+%
+% This function implements the Starburst Algorithm, a feature-based approach
+% for detecting the contour of the pupil in eye-tracking applications. It uses
+% a radial search pattern emanating from an initial guess point to locate edge
+% points that are likely part of the pupil boundary. The algorithm iteratively
+% refines these points to converge on the pupil contour.
+%
+% Usage:
+% [epx, epy, edge_thresh, epx_init, epy_init] = starburstPupilContourDetection(I, cx, cy, edge_thresh, radii_pupil, min_features, min_edge_thresh)
+%
+% Inputs:
+% - I: Input image (grayscale) in which pupil contour is to be detected.
+% - cx, cy: Initial guess for the pupil center (x and y coordinates).
+% - edge_thresh: Initial threshold for edge detection. The algorithm adjusts this
+%                threshold dynamically based on feature detection. Default: 30
+% - radii_pupil: Expected radii range of the pupil. Only the first value is used. It is scaled 
+%               to set the distance at which to start searching for an edge.
+% - min_features: Minimum fraction of total features (relative to the number of rays)
+%                required to proceed with the detection.
+% - min_edge_thresh: Minimum allowable edge threshold to limit the adjustment of
+%                    edge_thresh during detection. Default: 2
+%
+% Outputs:
+% - epx, epy: Coordinates (x and y) of the detected feature points that likely
+%             belong to the pupil contour.
+% - edge_thresh: The final edge threshold value used for detecting the feature points.
+% - epx_init, epy_init: Initial sets of feature points detected before iterative refinement.
+%
 %
 % This source code is part of the starburst algorithm.
 % Starburst algorithm is free; you can redistribute it and/or modify
@@ -21,33 +49,25 @@
 % Release Date:
 % Authors : Dongheng Li <donghengli@gmail.com>
 %           Derrick Parkhurst <derrick.parkhurst@hcvl.hci.iastate.edu>
+%           Edited by Hannah Payne, 2021
 % Copyright (c) 2005
 % All Rights Reserved.
 
-function [epx, epy, edge_thresh, epx_init, epy_init] = starburstPupilContourDetection(I, cx, cy, edge_thresh,radiiPupil,minfeatures, min_edge_thresh)
-
-% Input
-% I = input image
-% cx, cy = central start point of the feature detection process
-% edge_thresh = best guess for the pupil contour threshold (30)
-
-% Ouput
-% epx = x coordinate of feature candidates [row vector]
-% epy = y coordinate of feature candidates [row vector]
+function [epx, epy, edge_thresh, epx_init, epy_init] = starburstPupilContourDetection(I, cx, cy, edge_thresh, radii_pupil, min_features, min_edge_thresh)
 
 if ~exist('min_edge_thresh', 'var') || isempty(min_edge_thresh)
     min_edge_thresh = 2;
 end
 
 if isempty(edge_thresh) || edge_thresh<= min_edge_thresh
-    edge_thresh = 30;               % edge_threshold = best guess for the pupil contour threshold (30)
+    edge_thresh = 30;                 % edge_threshold = best guess for the pupil contour threshold (30)
 end
 
-N = 100;                                % number of rays to use to detect feature points  ***50
-min_candidate_features=N*minfeatures;   % minimum number of pupil feature candidates
-min_distance = radiiPupil(1)*.5;       % Distance from pupil center guess to start searching for edge % 0.65
-angle_spread = 60*pi/180;               % ***100*pi/180
-min_change = 6;                        % Stop if sum of change in mean x and y over previous iteration is smaller than this (distance in pixels)
+N = 100;                              % number of rays to use to detect feature points. Edited from 50
+min_candidate_features = N*min_features; % minimum number of pupil feature candidates
+min_distance = radii_pupil(1)*.5;      % Distance from pupil center guess to start searching for edge 
+angle_spread = 60*pi/180;               
+min_change = 6;                       % Stop if sum of change in mean x and y over previous iteration is smaller than this (distance in pixels)
 loop_count = 0;
 max_loop_count = 10;
 tcx(loop_count+1) = cx;
@@ -80,7 +100,6 @@ while edge_thresh > min_edge_thresh && loop_count <= max_loop_count
     tcx(loop_count+1) = mean(epx);
     tcy(loop_count+1) = mean(epy);
     if sqrt((tcx(loop_count+1)-cx).^2 + (tcy(loop_count+1)-cy).^2) < min_change % threshold change in pupil position over loops
-%         loop_count
         break;
     end
     cx = mean(epx);
@@ -115,7 +134,7 @@ epx = [];
 epy = [];
 dir = [];
 ep_num = 0;  % ep stands for edge point
-step = 2    ; %***2
+step = 2; 
 maxDist = 2;
 maxstep = round(dis*maxDist/step);
 dists = dis + step*(0:maxstep)';
@@ -131,7 +150,6 @@ for angle=(angle_normal-angle_spread/2+0.0001):angle_step:(angle_normal+angle_sp
     mask =  ps(:,2) < height & ps(:,2) > 1 & ps(:,1) < width & ps(:,1) > 1;
     ps = ps(mask,:);
         
-%     inds = sub2ind([height, width], ps(:,2), ps(:,1));
     inds = ps(:,2) + (ps(:,1) - 1).*height; 
     vals = I(inds);    
     
@@ -147,13 +165,3 @@ for angle=(angle_normal-angle_spread/2+0.0001):angle_step:(angle_normal+angle_sp
     
 end
 
-%% DEBUGGING/VISUALIZATION %%%
-%     figure(3); clf;
-%     imagesc(I);colormap(gray); axis image
-%     hold on; plot(epx, epy,'.y');
-%     if angle_spread  <6;  c = 'c'; else  c = 'm'; end
-% 
-%     plot([cx*ones(1,length(epx)); epx], [cy*ones(1,length(epy));epy],c)
-% 
-%     hold on; plot(cx,cy,'om')
-%     pause(.001)

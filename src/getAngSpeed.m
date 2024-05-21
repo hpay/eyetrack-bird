@@ -2,17 +2,6 @@ function [ang_speed, ang_acc] = getAngSpeed(R, fps, option_smooth_vel, option_me
 Fpass = 25;                % (Hz)    smoothing filter lowpass cutoff
 FN = 2;                    % Order of the smoothing filter, if used
 
-
-% if exist('option_med_filt','var') && option_med_filt
-%     for ii = 1:3
-%         for jj = 1:3
-%             
-%             R(ii,jj,:)  = medfilt1(R(ii,jj,:), 3);
-%         end
-%     end    
-% end
-
-
 ang_speed = NaN(size(R,3),1);
 for ii = 1:size(R,3)-1
     Rd = R(:,:,ii)'*R(:,:,ii+1);
@@ -21,7 +10,6 @@ for ii = 1:size(R,3)-1
 end
 
 if exist('option_med_filt','var') && option_med_filt
-   
     ang_speed = medfilt1(ang_speed,3);
 end
 

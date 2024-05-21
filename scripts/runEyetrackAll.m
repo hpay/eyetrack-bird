@@ -108,7 +108,7 @@ for ii  = 1:length(folders)
     
 end
 
-%% Analyze results - TODO: apply calibrations to each file separately then combine!!
+%% Analyze results - TODO: apply calibrations to each file separately then combine!! Currently assumes same calibration for all files
 a = strfind(filepath_eye_root,'_');
 filepath_eye = [filepath_eye_root(1:a(end)-1) '_all']
 [H, Ht, stats] = analyzeEyetrack(E_all, p_pupil_all, p_cornea_all, p_beak_all, Q_all,  A, downsample_eye);

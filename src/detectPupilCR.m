@@ -83,12 +83,6 @@ if p.smoothSigma
     I = imgaussfilt(I, p.smoothSigma);
 end
 
-% 
-% I_cr = I;
-% I_pupil = I;
-
-
-% I_cr = I;
 
 I_cr = I - p.pupil_intensity;
 
@@ -244,17 +238,14 @@ end
 
 if length(points.px0)>20
     p_robustEllipse = [];
-    p_robustEllipse.min_dist = 2; % distance threshold for segmentation (t)
     p_robustEllipse.min_num = 2;  % min number of points per cluster
-    p_robustEllipse.D = 10;       % expected number of sets
-    p_robustEllipse.S = 3;        % number of additional sets to keep in each iteration
-    p_robustEllipse.S_max = 10;   % max number of subsets to keep in each iteration
     p_robustEllipse.sigma = 1.15; % error threshold; searching process converges if excluding any subset does not reduce the energy up to certain rate σ
     p_robustEllipse.eta = 2.5;      % default 5. error threshold; in case there are much more outliers than average subset size so that removing any subset does not reduce the energy
     p_robustEllipse.inclusion_penalty = 6;
     p_robustEllipse.size_penalty = 10;
     p_robustEllipse.size_ellipse = mean(p.radiiPupil); % Guess to enforce correct pupil size (pixels)
     [points.px1, points.py1, ellipse_result1] = robustEllipse(points.px0, points.py0,p_robustEllipse, p.debug_on);
+    
     
     % Do better fit of resulting points
     ellipse_result2 = fitEllipse(points.px1,points.py1);

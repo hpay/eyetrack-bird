@@ -1,4 +1,6 @@
 function plotEyetrack(data_root, dir_roots)
+% plotEyetrack(data_root, dir_roots)
+% Plots summary across birds
 
 stats = table;
 filepath_eyes = [];

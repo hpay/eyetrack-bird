@@ -73,21 +73,22 @@ for jj = 1:N_head
     R_rigidbody_common(:,3,jj) = R_rigidbody(:,3,jj)'*A.R_head*A.R_45;
 end
 
-% Downsample head to match eye
+% Smooth then downsample head to match eye
 temp = [];
 temp.p = p_rigidbody_common;
 temp.R = shiftdim(R_rigidbody_common,2);
 temp = processStruct(temp, @(x) smooth(x, downsample_eye, 'moving'));
-p_rigidbody_common_ds = temp.p(1:downsample_eye:N_eye*downsample_eye-1,:);
-R_rigidbody_common_ds = shiftdim(temp.R(1:downsample_eye:N_eye*downsample_eye-1,:,:),1);
+ind_downsample = 1:downsample_eye:N_eye*downsample_eye-1;
+p_rigidbody_common_ds = temp.p(ind_downsample,:);
+R_rigidbody_common_ds = temp.R(ind_downsample,:,:);
 
 
 %% Get eye points+vectors in local rigidbody frame. Eye = center of corneal curvature
 p_eye_local = NaN(N_eye,3);
 v_eye_local = NaN(N_eye,3);
 for jj = 1:N_eye
-    p_eye_local(jj,:) = R_rigidbody_common_ds(:,:,jj)'*(p_cornea_common(jj,:)-p_rigidbody_common_ds(jj,:))';
-    v_eye_local(jj,:) = R_rigidbody_common_ds(:,:,jj)'*(v_eye_common(jj,:))';
+    p_eye_local(jj,:) = squeeze(R_rigidbody_common_ds(jj,:,:))'*(p_cornea_common(jj,:)-p_rigidbody_common_ds(jj,:))';
+    v_eye_local(jj,:) = squeeze(R_rigidbody_common_ds(jj,:,:))'*(v_eye_common(jj,:))';
 end
 
 
@@ -99,7 +100,7 @@ p_beak_common = (p_beak - A.p0_eye)*A.R_eye*A.R_45;
 % Convert from common world coords to local rigidbody coordinates
 p_beak_local_all = NaN(N_eye,3);
 for jj = 1:N_eye
-    p_beak_local_all(jj,:) = R_rigidbody_common_ds(:,:,jj)'*(p_beak_common(jj,:) - p_rigidbody_common_ds(jj,:))';
+    p_beak_local_all(jj,:) = squeeze(R_rigidbody_common_ds(jj,:,:))'*(p_beak_common(jj,:) - p_rigidbody_common_ds(jj,:))';
 end
 p_beak_local = mean(p_beak_local_all,'omitnan');
 d_beak = sqrt(sum((p_beak_local_all-p_beak_local).^2,2));
@@ -185,7 +186,7 @@ v_eye_L_local = mean(v_eye_local(mask_eye_L,:),1,'omitnan'); v_eye_L_local = v_e
 % Get the mean "head position": the mean of the two eyes
 p_meaneye_local = mean([p_eye_R_local; p_eye_L_local]);
 
-% for HC17: the intersection point doesn't work well, use mean of two eyes:
+% use mean of two eyes:
 p_head_local = p_meaneye_local;
 
 % OR get the intersection point of the two eye vectors:
@@ -339,6 +340,35 @@ xlim([-2 19]); ylim(11*[-1 1])
 set(gca,'XTick',0:5:15,'YTick',-10:5:10)
 fixticks
 
+%% Plot example for paper: head in world, eye in world, and eye in head
+mask_eye = mask_eye_R | mask_eye_L; % this mask also excludes bad data points
+mask_eye = true(size(mask_eye_R));
+
+% Get the head vector (eye midpoint to beak) in common QTM coordinates
+R_head = nan(3,3,N_head);
+R_head(:,1,:) = localToGlobalVector(R_rigidbody_common, vx_head_local);
+R_head(:,2,:) = localToGlobalVector(R_rigidbody_common, vy_head_local);
+R_head(:,3,:) = localToGlobalVector(R_rigidbody_common, vz_head_local);
+
+hs = plotHeadEye(t_head, R_head, t_eye, v_eye_common, v_eye_local_head, mask_eye);
+
+%% For example IND102_220707a!
+xlim([101 103.5]) 
+yrange = 36;
+ylim(hs(1), -166 + [0 yrange])
+ylim(hs(2), -118 + [0 yrange])
+ylim(hs(3), 25 + [0 yrange])
+% TODO: check why this range is excluded by masking?
+
+%% Plot histogram of angular speed for head vs. eye in head
+mask_eye = mask_eye_R;
+
+R_head_ds = R_head(:,:,ind_downsample);
+v_head_ds = squeeze(R_head_ds(:,1,:))';
+plotHeadEyeSpeed(t_eye, v_head_ds, v_eye_local_head, mask_eye);
+
+
+
 %% Save as a template for use with old data:
 Ht = table;
 vx_template_local = (p_beak_local-p_meaneye_local)/norm(p_beak_local-p_meaneye_local);
@@ -383,20 +413,20 @@ dists= {};
 nframes= [];
 for which_eye  = [0 1]
     if which_eye == 1
-        mask = mask_eye_R;
+        mask_eye = mask_eye_R;
         theta_mean = atan2d(H.v_eye_R_head(2), H.v_eye_R_head(1));
         phi_mean = acosd(H.v_eye_R_head(3));
     else
-        mask = mask_eye_L;
+        mask_eye = mask_eye_L;
         theta_mean = atan2d(H.v_eye_L_head(2), H.v_eye_L_head(1));
         phi_mean = acosd(H.v_eye_L_head(3));
     end
     
     % Get local vectors of eye relative to head
     v_eye_local_head = H.R_head'*v_eye_local';
-    theta = atan2d(v_eye_local_head(2,mask), v_eye_local_head(1,mask));
-    phi = acosd(v_eye_local_head(3,mask));
-    nframes(which_eye+1) = nnz(mask);
+    theta = atan2d(v_eye_local_head(2,mask_eye), v_eye_local_head(1,mask_eye));
+    phi = acosd(v_eye_local_head(3,mask_eye));
+    nframes(which_eye+1) = nnz(mask_eye);
     hs(which_eye+1) = subplot(1,2,which_eye+1);
     scatter(theta-theta_mean, phi-phi_mean,9, 'c','MarkerEdgeAlpha',.3)
     axis equal

@@ -30,7 +30,7 @@ plot_handles2.ah = subplot(1,2,2);
 set(plot_handles2.ah,'Pos',apos+[0.5 0 0 0]); drawnow
 
 %% Plot an example frame to get pupil and iris thresholds
-p(1).example_t = 4; % Change current time if needed
+p(1).example_t = 7; % Change current time if needed
 pause(0.001);
 I1 = single(rgb2gray(read(vid1, round(p(1).example_t*frameRate))));
 I2 = single(rgb2gray(read(vid2, round(p(1).example_t*frameRate))));
