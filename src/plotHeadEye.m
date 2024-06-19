@@ -22,7 +22,7 @@ eye_local_yaw = squeeze(atan2d(v_eye_local(:,2), v_eye_local(:,1)));
 
 figure;
 hs = subplot(3,1,1);
-hp = plot(t_head, head_yaw,'-k'); hold on
+hp = plot(t_head, head_yaw,'.-k'); hold on
 ylabel('Head')
 
 hs(2) = subplot(3,1,2);
