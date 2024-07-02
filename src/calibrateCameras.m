@@ -40,6 +40,12 @@ if ~exist(fullfile(filepath_camera_calib,'calib.mat'),'file')
     
     % Get the location of the IR lights
     C = calibrateLights(filepath_camera_calib, stereo_params);
+    if C.p_light1(1) > C.p_light2(1)
+        warning('Check that light 1 and 2 are not mislabelled in lights folder')
+    end
+    if C.p_cam2(1) > C.p_cam2(1)
+        warning('Check that cameras 1 and 2 are not mislabelled in calibration folder')
+    end
     save(fullfile(filepath_camera_calib,'calib.mat'),'C')
 else
     C = getfield(load(fullfile(filepath_camera_calib,'calib.mat')),'C');

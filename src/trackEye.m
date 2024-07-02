@@ -93,8 +93,8 @@ for ii = ii_start:N_eye
     [E.pupil2(ii,:), E.cr2(ii,:,:), edge_thresh2, E.resid2(ii), points2] = ...
         detectPupilCR(I2, max(p(2).min_edge_thresh+4,edge_thresh2+4), p(2));
     
-%     plot_handles1 = detectPupilCRPlot(I1, p(1), plot_handles1, E.pupil1(ii,:), squeeze(E.cr1(ii,:,:)), points1);
-%     plot_handles2 = detectPupilCRPlot(I2, p(2), plot_handles2, E.pupil2(ii,:), squeeze(E.cr2(ii,:,:)), points2);
+    plot_handles1 = detectPupilCRPlot(I1, p(1), plot_handles1, E.pupil1(ii,:), squeeze(E.cr1(ii,:,:)), points1);
+    plot_handles2 = detectPupilCRPlot(I2, p(2), plot_handles2, E.pupil2(ii,:), squeeze(E.cr2(ii,:,:)), points2);
     
     % If either one fails, reset position of both
     if isnan(E.pupil1(ii,1)) || isnan(E.pupil2(ii,1))

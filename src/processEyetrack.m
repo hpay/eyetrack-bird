@@ -11,7 +11,7 @@ function [E, p_pupil, p_cornea, p_beak, p] = processEyetrack(filepath_eye,  camf
 
 
 %% Get beak
-beak = getBeak(filepath_eye, camfilename, resume_beak, run_beak);
+[beak, flag_newdata] = getBeak(filepath_eye, camfilename, resume_beak, run_beak);
 
 
 %% Track eye
@@ -44,6 +44,7 @@ if ~exist(fullfile(filepath_eye, 'eye.mat'),'file')
     p(2).iris_intensity = 70;  % Adjust based on images if needed %80
     
     [E,p] = trackEye(filepath_eye, p, camfilename); % TRACK THE PUPIL AND CR
+    flag_newdata = true;
 else
     temp = load(fullfile(filepath_eye,'eye.mat'));
     E = temp.E;
@@ -52,6 +53,7 @@ else
     % To resume where we left off
     if isfield(temp,'ii') && resume_eye
         [E,p] = trackEye(filepath_eye, p, camfilename); % TRACK THE PUPIL AND CR
+        flag_newdata = true;
     end
 end
 
@@ -66,7 +68,7 @@ if isempty(beak)
 end
 
 %% Convert pupil and corneal reflections from image to camera world coordinates
-if resume_eye || ~exist(fullfile(filepath_eye,'eye_triangulate.mat'),'file')
+if (resume_eye && flag_newdata) || ~exist(fullfile(filepath_eye,'eye_triangulate.mat'),'file')
     p_cornea = NaN(N_eye, 3);
     p_pupil = NaN(N_eye, 3);
     nanmask = ~isnan(E.pupil1(:,1)) & ~isnan(E.cr1(:,1,2)) & ~isnan(E.pupil2(:,1)) & ~isnan(E.cr2(:,1,2));
@@ -84,6 +86,10 @@ if resume_eye || ~exist(fullfile(filepath_eye,'eye_triangulate.mat'),'file')
             undistortPoints(beak.p2(~isnan(beak.p2(:,1)),:), ...
             C.stereo_params.CameraParameters2),C.stereo_params);
     end
+    
+
+
+    
     save(fullfile(filepath_eye,'eye_triangulate.mat'),'p_pupil','p_cornea','p_beak')
 else
     temp = load(fullfile(filepath_eye,'eye_triangulate.mat'),'p_pupil','p_cornea','p_beak');

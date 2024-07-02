@@ -31,9 +31,10 @@ E_all.points_fraction2 = [];
 p_pupil_all= [];
 p_cornea_all = [];
 p_beak_all =[];
+dist_pc_all = [];
 
 for ii  = 1:length(folders)
-    
+    close all
     filepath_eye = fullfile(data_root, folders{ii});
     disp(filepath_eye)
     
@@ -44,6 +45,12 @@ for ii  = 1:length(folders)
     filepath_camera = fullfile(calib_root, folder_camera_calib);
     disp(filepath_camera)
     [C, A] = calibrateCameras(filepath_camera);
+    if C.p_light1(1) > C.p_light2(1)
+        warning('Check that light 1 and 2 are not mislabelled in lights folder')
+    end
+    if C.p_cam1(1) > C.p_cam2(1)
+        warning('Check that cameras 1 and 2 are not mislabelled in calibration folder')
+    end
     
     %% Load Qualysis rigid body
     filename_qtm = 'qtm.mat'; % 6DOF
@@ -65,8 +72,9 @@ for ii  = 1:length(folders)
     if ii>1
         run_beak = 0;
     end
-    resume_eye = 0;
-    [E, p_pupil, p_cornea, p_beak] = processEyetrack(filepath_eye, camfilename,  C, resume_beak, run_beak, resume_eye);
+    resume_eye = 1;
+    [E, p_pupil_cam, p_cornea_cam, p_beak_cam] = processEyetrack(filepath_eye, camfilename,  C, resume_beak, run_beak, resume_eye);
+    [p_pupil_cam, p_cornea_cam, dist_pc] = correctLengthP_CR(p_pupil_cam, p_cornea_cam);
     N_eye = length(E.resid1);
     
     E_all.pupil1 = [E_all.pupil1; E.pupil1];
@@ -82,9 +90,6 @@ for ii  = 1:length(folders)
         E_all.points_fraction1 = [E_all.points_fraction1; NaN(N_eye,1)];
         E_all.points_fraction2 = [E_all.points_fraction2; NaN(N_eye,1)];
     end
-    p_pupil_all = [p_pupil_all; p_pupil];
-    p_cornea_all = [p_cornea_all; p_cornea];
-    p_beak_all = [p_beak_all; p_beak];
     
     % Crop QTM if longer than eye cameras
     if N_head  > N_eye*downsample_eye
@@ -98,20 +103,33 @@ for ii  = 1:length(folders)
     Q_raw.N_head =  N_head;
     Q_raw.p_rigidbody = squeeze(Q.RigidBodies.Positions(1,:,:))';
     Q_raw.R_rigidbody = reshape(Q.RigidBodies.Rotations(1,:,:), [3,3,N_head]); % [X Y Z]
+        
+    %% Convert to common reference frame
+    Q_common = Q_raw;
+    [p_pupil_common, p_cornea_common, p_beak_common, Q_common.p_rigidbody, Q_common.R_rigidbody]...
+        = alignCommonReferenceFrame(A, p_pupil_cam, p_cornea_cam, p_beak_cam, Q_raw.p_rigidbody, Q_raw.R_rigidbody);
+
     
+    %% Combine files
     
+    p_pupil_all = [p_pupil_all; p_pupil_common];
+    p_cornea_all = [p_cornea_all; p_cornea_common];
+    p_beak_all = [p_beak_all; p_beak_common];
+    dist_pc_all = [dist_pc_all; dist_pc];
+
     Q_all.fps_head = Q.FrameRate;
-    Q_all.N_head = Q_all.N_head + Q_raw.N_head;
-    Q_all.p_rigidbody = [Q_all.p_rigidbody; Q_raw.p_rigidbody];
-    Q_all.R_rigidbody = cat(3, Q_all.R_rigidbody, Q_raw.R_rigidbody); % [X Y Z]
+    Q_all.N_head = Q_all.N_head + Q_common.N_head;
+    Q_all.p_rigidbody = [Q_all.p_rigidbody; Q_common.p_rigidbody];
+    Q_all.R_rigidbody = cat(3, Q_all.R_rigidbody, Q_common.R_rigidbody); % [X Y Z]
     
     
 end
-
-%% Analyze results - TODO: apply calibrations to each file separately then combine!! Currently assumes same calibration for all files
+% 
+%% Analyze results - TODO: apply arena calibrations to each file separately then combine!! Currently assumes same calibration for all files
 a = strfind(filepath_eye_root,'_');
 filepath_eye = [filepath_eye_root(1:a(end)-1) '_all']
-[H, Ht, stats] = analyzeEyetrack(E_all, p_pupil_all, p_cornea_all, p_beak_all, Q_all,  A, downsample_eye);
+[H, Ht, stats] = analyzeEyetrack(E_all, p_pupil_all, p_cornea_all, p_beak_all, Q_all,  downsample_eye, dist_pc_all);
+drawnow;
 H.folder_eye_calib = folders;
 H.folder_camera_calib = '';
 Ht.folder = filepath_eye;

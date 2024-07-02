@@ -8,13 +8,13 @@ end
 % PARAMS
 max_resid = 1.2*scale;
 nstd_radius = 2;
-min_ecc = 0.6;
-dist_thresx = 150; % (px)
-dist_thresy = 25;
+min_ecc = 0.7;
+dist_thresx = 80; % (px)
+dist_thresy = 10;
 dist_thres_cr = 10; % (px)
 dist_thresh_crpupil = 40;
-maxgap = 0.02;  % (s) % 0.02
-medfilt = 0.05; % (s) % 0.05
+maxgap = 0.02;  % (s) frame rate is typically 50 Hz, so 20 ms = fill in one gap
+medfilt = 0.06; % (s) % 0.05
 
 E = Eraw;
 dt_eye = mean(diff(E.t));

@@ -1,8 +1,9 @@
-function beak = getBeak(filepath_eye, camfilename, resume_beak, run_beak)
+function [beak, flag_newdata] = getBeak(filepath_eye, camfilename, resume_beak, run_beak)
 
 
 %% PARAMS
 DI = 45; % Number of frames to skip each time
+flag_newdata = false;
 
 if exist(fullfile(filepath_eye,'beak.mat'),'file')% Add more beak points
     beak = load(fullfile(filepath_eye,'beak.mat'));
@@ -20,6 +21,8 @@ if ~run_beak
     beak = [];
     return
 end
+
+flag_newdata = true;
 
 %% Load the high res video
 cam1 = dir(fullfile(filepath_eye, sprintf(camfilename, 1) ));

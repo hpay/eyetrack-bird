@@ -1,4 +1,4 @@
-function [H, Ht, stats] = analyzeEyetrack(Eraw, p_pupil0, p_cornea0, p_beak,  Q_raw, A, downsample_eye)
+function [H, Ht, stats] = analyzeEyetrack(Eraw, p_pupil0, p_cornea0, p_beak,  Q_raw, downsample_eye, dist_pc)
 
 dir_figures = fullfile(fileparts(fileparts(which(mfilename))), 'results');
 mkdir(dir_figures)
@@ -19,88 +19,55 @@ Eraw.t = t_eye;
 %% Clean up eye tracking results
 scale = 1;
 [E, nanmask] = cleanEye(Eraw,scale);
-plotEye(Eraw)
 plotEye(E)
-
-%% Correction to ensure consistent length of pupil-center corneal curvature vectors
 p_pupil = p_pupil0;
 p_cornea = p_cornea0;
 p_pupil(nanmask,:) = NaN;
 p_cornea(nanmask,:) = NaN;
 
-dist_p_c = sqrt(sum((p_pupil0 - p_cornea0).^2,2));
-K = median(dist_p_c,'omitnan'); % (mm)
-
-% Camera coordinates:
-% First column: x axis of image (cols)
-% Second column: y axis of image (rows, down in actual space)
-% Third column: pointing along optical axis away from cameras
-zc = p_cornea(:,3);
-xc = p_cornea(:,1);
-yc = p_cornea(:,2);
-xp = p_pupil(:,1);
-yp = p_pupil(:,2);
-zp = zc - real(sqrt(K^2 - (xc-xp).^2 - (yc-yp).^2));
-p_pupil(:,3) = zp;
-
 % Exclude points where the pupil-ccc distance is too far off from the median
 thresh_dist_p_c = 0.1; % Fraction away from median distance to exclude
-mask_dist_p_c = abs(dist_p_c - K)/K> thresh_dist_p_c*scale | abs(imag(zp))>eps;
+K = median(dist_pc,'omitnan'); % (mm)
+mask_dist_p_c = (abs(dist_pc - K)/K)> thresh_dist_p_c*scale;
 p_pupil(mask_dist_p_c,:) = NaN;
-p_pupil = real(p_pupil);
 p_cornea(mask_dist_p_c,:) = NaN;
-dist_p_c(mask_dist_p_c) = NaN;
-fprintf('Mean pupil-ccc distance: %.2f mm. mask_dist_p_c %.3f\n', nanmean(dist_p_c), mean(mask_dist_p_c))
+fprintf('Mean pupil-ccc distance: %.2f mm. mask_dist_p_c %.3f\n', nanmean(dist_pc(mask_dist_p_c)), mean(mask_dist_p_c))
 
 
 %% Calculate eye locations/vectors and head locations/vectors relative to common axis reference frame
-
-% Align eye points
-p_pupil_common = (p_pupil - A.p0_eye)*A.R_eye*A.R_45; % A.p0_eye refers to dual camera measured in calibrateAxesBW
-p_cornea_common = (p_cornea - A.p0_eye)*A.R_eye*A.R_45;
-
 % Get a unit vector pointing in the direction of the eye
-v_eye_common = (p_pupil_common-p_cornea_common)./sqrt(sum((p_pupil_common-p_cornea_common).^2, 2));
-
-% Align head points
-p_rigidbody_common = (p_rigidbody - A.p0_head)*A.R_head*A.R_45; % A.p0_head refers to dual camera measured in calibrateAxesBW
-
-% Rotation matrix for the head rigid body
-R_rigidbody_common = NaN(size(R_rigidbody));
-for jj = 1:N_head
-    R_rigidbody_common(:,1,jj) = R_rigidbody(:,1,jj)'*A.R_head*A.R_45;
-    R_rigidbody_common(:,2,jj) = R_rigidbody(:,2,jj)'*A.R_head*A.R_45;
-    R_rigidbody_common(:,3,jj) = R_rigidbody(:,3,jj)'*A.R_head*A.R_45;
-end
+v_eye = (p_pupil-p_cornea)./sqrt(sum((p_pupil-p_cornea).^2, 2));
 
 % Smooth then downsample head to match eye
 temp = [];
-temp.p = p_rigidbody_common;
-temp.R = shiftdim(R_rigidbody_common,2);
+temp.p = p_rigidbody;
+temp.R = shiftdim(R_rigidbody,2);
 temp = processStruct(temp, @(x) smooth(x, downsample_eye, 'moving'));
 ind_downsample = 1:downsample_eye:N_eye*downsample_eye-1;
-p_rigidbody_common_ds = temp.p(ind_downsample,:);
-R_rigidbody_common_ds = temp.R(ind_downsample,:,:);
+p_rigidbody_ds = temp.p(ind_downsample,:);
+R_rigidbody_ds = temp.R(ind_downsample,:,:);
 
 
-%% Get eye points+vectors in local rigidbody frame. Eye = center of corneal curvature
+%% Get eye points+vectors in local rigidbody frame.
+% Take eye to be center of corneal curvature. This is not exactly correct, but we don't know which point the eye rotates about anyway. 
+% Could be corrected (prior to alignCommonReferenceFrame) to be ~1.0 mm farther away along the camera axis, which is half the radius of the cornea (cornea diameter = 4.13 mm in Carolina chickadees, Moore 2013))
+p_eye = p_cornea;
+
 p_eye_local = NaN(N_eye,3);
 v_eye_local = NaN(N_eye,3);
 for jj = 1:N_eye
-    p_eye_local(jj,:) = squeeze(R_rigidbody_common_ds(jj,:,:))'*(p_cornea_common(jj,:)-p_rigidbody_common_ds(jj,:))';
-    v_eye_local(jj,:) = squeeze(R_rigidbody_common_ds(jj,:,:))'*(v_eye_common(jj,:))';
+    p_eye_local(jj,:) = squeeze(R_rigidbody_ds(jj,:,:))'*(p_eye(jj,:)-p_rigidbody_ds(jj,:))';
+    v_eye_local(jj,:) = squeeze(R_rigidbody_ds(jj,:,:))'*(v_eye(jj,:))';
 end
 
 
 %% Get beak in local rigidbody frame
 
-% Convert from camera world coords to common world coords
-p_beak_common = (p_beak - A.p0_eye)*A.R_eye*A.R_45;
 
 % Convert from common world coords to local rigidbody coordinates
 p_beak_local_all = NaN(N_eye,3);
 for jj = 1:N_eye
-    p_beak_local_all(jj,:) = squeeze(R_rigidbody_common_ds(jj,:,:))'*(p_beak_common(jj,:) - p_rigidbody_common_ds(jj,:))';
+    p_beak_local_all(jj,:) = squeeze(R_rigidbody_ds(jj,:,:))'*(p_beak(jj,:) - p_rigidbody_ds(jj,:))';
 end
 p_beak_local = mean(p_beak_local_all,'omitnan');
 d_beak = sqrt(sum((p_beak_local_all-p_beak_local).^2,2));
@@ -114,6 +81,7 @@ vx_head_local = (p_beak_local-p_head_local_temp)/norm(p_beak_local-p_head_local_
 flag_reverse = false;
 if dot(vx_head_local, [0 1 0])<0
     flag_reverse = true;
+    warning('reverse eye orientation')
 end
 
 divide_RL = 10;
@@ -127,12 +95,16 @@ end
 
 %% Get mask for eye positions that are out of range
 max_eye_deviation = 1; % (mm)
-getMax = @(x) median(x,'omitnan') + max_eye_deviation;
-getMin= @(x) median(x,'omitnan') - max_eye_deviation;
+nstd = 3;
+% getMax = @(x) median(x,'omitnan') + max_eye_deviation;
+% getMin= @(x) median(x,'omitnan') - max_eye_deviation;
+
+getMax = @(x) mean(x,'omitnan') + nstd*std(x,'omitnan');
+getMin= @(x) mean(x,'omitnan') - nstd*std(x,'omitnan');
 
 figure
-subplot(3,1,1)
-histogram(p_eye_local(:,1), [-inf 0:.2:18 inf]); xlabel('p_eye_local (x coord/lateral pos, mm)','interp','none')
+subplot(2,2,1)
+histogram(p_eye_local(:,1), [-inf 0:.1:18 inf]); xlabel('p_eye_local (x coord/lateral pos, mm)','interp','none')
 hold on; title('Lateral position')
 dashedline(divide_RL, ylim,6,'Color','c');
 dashedline(getMin(p_eye_local(mask_eye_R,1)), ylim,6,'Color','r');
@@ -141,30 +113,40 @@ dashedline(getMax(p_eye_local(mask_eye_R,1)), ylim,6,'Color','r');
 dashedline(getMin(p_eye_local(mask_eye_L,1)), ylim,6,'Color','r');
 dashedline(getMax(p_eye_local(mask_eye_L,1)), ylim,6,'Color','r');
 
-subplot(3,1,2)
-histogram(p_eye_local(:,2), [-inf 5:.2:12 inf]); xlabel('p_eye_local (y coord/anterior pos, mm)','interp','none')
+subplot(2,2,2)
+min_p_eye_local2 = getMin(p_eye_local(:,2));
+max_p_eye_local2 = getMax(p_eye_local(:,2));
+histogram(p_eye_local(:,2), [-inf min_p_eye_local2-4:.1:max_p_eye_local2+4 inf]); xlabel('p_eye_local (y coord/anterior pos, mm)','interp','none')
 hold on; title('Anterior position')
-dashedline(getMin(p_eye_local(:,2)), ylim,6,'Color','r');
-dashedline(getMax(p_eye_local(:,2)), ylim,6,'Color','r');
+dashedline(min_p_eye_local2, ylim,6,'Color','r');
+dashedline(max_p_eye_local2, ylim,6,'Color','r');
 
 
-subplot(3,1,3)
-histogram(p_eye_local(:,3), [-inf -40:.2:-20 inf]); xlabel('p_eye_local (z coord/dorsal pos, mm)','interp','none')
+subplot(2,2,3)
+histogram(p_eye_local(:,3), [-inf -35:.1:-25 inf]); xlabel('p_eye_local (z coord/dorsal pos, mm)','interp','none')
 hold on; title('Dorsal position')
 dashedline(getMin(p_eye_local(:,3)), ylim,6,'Color','r');
 dashedline(getMax(p_eye_local(:,3)), ylim,6,'Color','r');
 
-% Mask Anterior
+subplot(2,2,4)
+histogram(v_eye(:,2),-1:.05:0); xlabel('v_eye (y)','interp','none')
+hold on; title('Eye vector (y)')
+dashedline(getMin(v_eye(:,2)), ylim,6,'Color','r');
+dashedline(getMax(v_eye(:,2)), ylim,6,'Color','r');
+
+% Mask position 
 mask_lateral = false(length(p_eye_local),1);
 mask_lateral(mask_eye_R) =  p_eye_local(mask_eye_R,1)>getMax(p_eye_local(mask_eye_R,1)) | p_eye_local(mask_eye_R,1)<getMin(p_eye_local(mask_eye_R,1));
 mask_lateral(mask_eye_L) =  p_eye_local(mask_eye_L,1)>getMax(p_eye_local(mask_eye_L,1)) | p_eye_local(mask_eye_L,1)<getMin(p_eye_local(mask_eye_L,1));
-
 mask_anterior= p_eye_local(:,2)>getMax(p_eye_local(:,2)) | p_eye_local(:,2)<getMin(p_eye_local(:,2)) ;
 mask_dorsal= p_eye_local(:,3)>getMax(p_eye_local(:,3)) | p_eye_local(:,3)<getMin(p_eye_local(:,3)) ;
 
-mask_median_pos = mask_lateral | mask_anterior | mask_dorsal;
-p_eye_local(mask_median_pos,:) = NaN;
-v_eye_local(mask_median_pos,:) = NaN;
+% Mask angle: check if y axis (towards cameras) is way off
+mask_vector = v_eye(:,2)>getMax(v_eye(:,2)) | v_eye(:,2)<getMin(v_eye(:,2)) ;
+
+mask_pos = mask_lateral | mask_anterior | mask_dorsal | mask_vector;
+p_eye_local(mask_pos,:) = NaN;
+v_eye_local(mask_pos,:) = NaN;
 
 % Update L/R eye masks to exclude NaNs
 if flag_reverse
@@ -229,15 +211,16 @@ H.v_eye_R_head = H.R_head'*H.v_eye_R;
 H.v_eye_L_head = H.R_head'*H.v_eye_L;
 
 %% Plot local eye position in 3d (in rigid body coordinates)
-figure;
 ds = 6; % downsample for plotting
 
+figure;
 scatter3(p_eye_local(1:ds:end,1),p_eye_local(1:ds:end,2), p_eye_local(1:ds:end,3),30, 'k.'); hold on;% Plot the raw data points
-for ii = 1:ds:length(E.t)
+a = 6;
+for ii = 1:ds:N_eye
     if ~isnan(p_eye_local(ii,1))
-        plot3(p_eye_local(ii,1) + [0 v_eye_local(ii,1)], ...
-            p_eye_local(ii,2)+ [0 v_eye_local(ii,2)],...
-            p_eye_local(ii,3)+ [0 v_eye_local(ii,3)],'k','LineWidth',.25);
+        plot3(p_eye_local(ii,1) + a*[0 v_eye_local(ii,1)], ...
+            p_eye_local(ii,2)+ a*[0 v_eye_local(ii,2)],...
+            p_eye_local(ii,3)+ a*[0 v_eye_local(ii,3)],'k','LineWidth',.25);
     end
 end
 
@@ -266,7 +249,6 @@ view([1 0 0])
 grid on
 
 %% Plot local eye position in 2d (in head coordinates)
-
 % Get local vectors of eye relative to head
 v_eye_local_head = (H.R_head'*v_eye_local')';
 p_eye_local_head = (H.R_head'*(p_eye_local - p_head_local)')';
@@ -281,10 +263,10 @@ msize = 20;
 lw = 1;
 
 % Top view
+%{
 figure;
-ds = 6; % downsample for plotting
 scatter(p_eye_local_head(1:ds:end,1),p_eye_local_head(1:ds:end,2),20,color_pts,'filled'); hold on;% Plot the raw data points
-for ii = 1:ds:length(E.t)
+for ii = 1:ds:N_eye
     if ~isnan(p_eye_local_head(ii,1))
         plot(p_eye_local_head(ii,1) + c*[0 v_eye_local_head(ii,1)],...
             p_eye_local_head(ii,2)+ c*[0 v_eye_local_head(ii,2)],'Color',color_pts,'LineWidth',.25);
@@ -303,19 +285,19 @@ plot([0 v_beak_head(1)*b], [0 v_beak_head(2)*b], '-k','LineWidth',lw)
 
 xlabel('x position (mm)');   ylabel('y position (mm)');
 set(gca,'Pos',[0.1 0.2 .7 .7])
-shrink
-view(-90, 90) %# Swap the axes
+% shrink
+% view(-90, 90) %# Swap the axes
 set(gca, 'ydir', 'reverse');
+set(gca, 'xdir', 'reverse');
 axis equal;
 xlim([-2 19]); ylim(11*[-1 1])
 set(gca,'XTick',0:5:15,'YTick',-10:5:10)
 fixticks
 
-% Side view
+%% Side view
 figure;
-ds = 6; % downsample for plotting
 scatter(p_eye_local_head(1:ds:end,1),p_eye_local_head(1:ds:end,3),20,color_pts,'filled'); hold on;% Plot the raw data points
-for ii = 1:ds:length(E.t)
+for ii = 1:ds:N_eye
     if ~isnan(p_eye_local_head(ii,1))
         plot(p_eye_local_head(ii,1) + c*[0 v_eye_local_head(ii,1)],...
             p_eye_local_head(ii,3)+ c*[0 v_eye_local_head(ii,3)],'Color',color_pts,'LineWidth',.25);
@@ -339,35 +321,38 @@ axis equal;
 xlim([-2 19]); ylim(11*[-1 1])
 set(gca,'XTick',0:5:15,'YTick',-10:5:10)
 fixticks
+%}
 
 %% Plot example for paper: head in world, eye in world, and eye in head
-mask_eye = mask_eye_R | mask_eye_L; % this mask also excludes bad data points
-mask_eye = true(size(mask_eye_R));
+%{
+mask_eye = mask_eye_R | mask_eye_L; % this mask excludes bad data points
+% mask_eye = true(size(mask_eye_R));
 
 % Get the head vector (eye midpoint to beak) in common QTM coordinates
 R_head = nan(3,3,N_head);
-R_head(:,1,:) = localToGlobalVector(R_rigidbody_common, vx_head_local);
-R_head(:,2,:) = localToGlobalVector(R_rigidbody_common, vy_head_local);
-R_head(:,3,:) = localToGlobalVector(R_rigidbody_common, vz_head_local);
+R_head(:,1,:) = localToGlobalVector(R_rigidbody, vx_head_local);
+R_head(:,2,:) = localToGlobalVector(R_rigidbody, vy_head_local);
+R_head(:,3,:) = localToGlobalVector(R_rigidbody, vz_head_local);
 
-hs = plotHeadEye(t_head, R_head, t_eye, v_eye_common, v_eye_local_head, mask_eye);
+hs = plotHeadEye(t_head, R_head, t_eye, v_eye, v_eye_local_head, mask_eye);
 
-%% For example IND102_220707a!
+
+% For example IND102_220707a!
 xlim([101 103.5]) 
 yrange = 36;
 ylim(hs(1), -166 + [0 yrange])
 ylim(hs(2), -118 + [0 yrange])
 ylim(hs(3), 25 + [0 yrange])
-% TODO: check why this range is excluded by masking?
+%}
 
 %% Plot histogram of angular speed for head vs. eye in head
+%{
 mask_eye = mask_eye_R;
-
 R_head_ds = R_head(:,:,ind_downsample);
 v_head_ds = squeeze(R_head_ds(:,1,:))';
 plotHeadEyeSpeed(t_eye, v_head_ds, v_eye_local_head, mask_eye);
 
-
+%}
 
 %% Save as a template for use with old data:
 Ht = table;

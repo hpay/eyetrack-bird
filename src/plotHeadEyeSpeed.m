@@ -11,7 +11,7 @@ cc = 'c';
 v_eye_local(~mask_eye,:) = NaN;
 v_head(~mask_eye,:) = NaN;
 
-dt= mean(diff(t_eye));
+dt = mean(diff(t_eye));
 
 p = regionprops(~mask_eye,'Area','PixelList');
 
