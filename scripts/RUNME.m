@@ -22,8 +22,9 @@ filepath_camera = 'Z:\Hannah\eyetrack\calibration\231102';
 % dir_root = 'HC07_221013';
 % downsample_eye = 6;
 % 
-
-% dir_root = 'HC08_221028c';
+% dir_root = 'HC08_221028a'; % Good
+% dir_root = 'HC08bad_221028b'; % Problem! Couldn't solve, exclude by renaming folder for now
+% dir_root = 'HC08_221028c'; % Good
 % downsample_eye = 6;
 
 % dir_root = 'HC09_221028b'; % QTM file corrupted? Don't use
@@ -32,7 +33,6 @@ filepath_camera = 'Z:\Hannah\eyetrack\calibration\231102';
 
 % dir_root = 'HC11_230201a';
 % downsample_eye = 6;
-
 
 % dir_root = 'HC11_230201b';
 % downsample_eye = 6;
@@ -76,7 +76,7 @@ downsample_eyes = [6 6 6 6 6 6 6 6 5 6 6 6 6 6 6 6];
 % NOTE: RBY47_221013 is the same bird as HC06_221013 before surgery, could
 % use instead if needed
 
-for ii = [5 6 11] % 1:length(dir_roots)
+for ii = 1:length(dir_roots)
     runEyetrackAll(fullfile(data_root, dir_roots{ii}), downsample_eyes(ii), ploton)   
 end
 
