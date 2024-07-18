@@ -1,4 +1,4 @@
-function [H, Ht, stats] = analyzeEyetrack(Eraw, p_pupil0, p_cornea0, p_beak,  Q_raw, downsample_eye, dist_pc)
+function [H, Ht, stats, Eout] = analyzeEyetrack(Eraw, p_pupil0, p_cornea0, p_beak,  Q_raw, downsample_eye, dist_pc)
 
 dir_figures = fullfile(fileparts(fileparts(which(mfilename))), 'results');
 mkdir(dir_figures)
@@ -46,6 +46,7 @@ temp = processStruct(temp, @(x) smooth(x, downsample_eye, 'moving'));
 ind_downsample = 1:downsample_eye:N_eye*downsample_eye-1;
 p_rigidbody_ds = temp.p(ind_downsample,:);
 R_rigidbody_ds = temp.R(ind_downsample,:,:);
+
 
 
 %% Get eye points+vectors in local rigidbody frame.
@@ -250,7 +251,7 @@ grid on
 
 %% Plot local eye position in 2d (in head coordinates)
 % Get local vectors of eye relative to head
-v_eye_local_head = (H.R_head'*v_eye_local')';
+v_eye_local_head = v_eye_local*H.R_head;
 p_eye_local_head = (H.R_head'*(p_eye_local - p_head_local)')';
 p_eye_R_head = H.R_head'*(H.p_eye_R - p_head_local(:));
 p_eye_L_head = H.R_head'*(H.p_eye_L - p_head_local(:));
@@ -263,7 +264,7 @@ msize = 20;
 lw = 1;
 
 % Top view
-%{
+% %{
 figure;
 scatter(p_eye_local_head(1:ds:end,1),p_eye_local_head(1:ds:end,2),20,color_pts,'filled'); hold on;% Plot the raw data points
 for ii = 1:ds:N_eye
@@ -396,6 +397,8 @@ figure('Units','Centi','Pos',[14   12   16   8]);
 hs  = gobjects(1,2);
 dists= {};
 nframes= [];
+    v_eye_local_head = v_eye_local*H.R_head;
+
 for which_eye  = [0 1]
     if which_eye == 1
         mask_eye = mask_eye_R;
@@ -408,9 +411,8 @@ for which_eye  = [0 1]
     end
     
     % Get local vectors of eye relative to head
-    v_eye_local_head = H.R_head'*v_eye_local';
-    theta = atan2d(v_eye_local_head(2,mask_eye), v_eye_local_head(1,mask_eye));
-    phi = acosd(v_eye_local_head(3,mask_eye));
+    theta = atan2d(v_eye_local_head(mask_eye,2), v_eye_local_head(mask_eye,1));
+    phi = acosd(v_eye_local_head(mask_eye,3));
     nframes(which_eye+1) = nnz(mask_eye);
     hs(which_eye+1) = subplot(1,2,which_eye+1);
     scatter(theta-theta_mean, phi-phi_mean,9, 'c','MarkerEdgeAlpha',.3)
@@ -423,6 +425,8 @@ for which_eye  = [0 1]
     std_thetas(which_eye+1) = nanstd(theta);
     std_phis(which_eye+1) = nanstd(phi);
     dists{which_eye+1} = sqrt((theta-theta_mean).^2+(phi-phi_mean).^2);
+    
+
 end
 set(hs,'TickLength',[0 0])
 set(hs,'XTick',-30:10:30,'YTick',-30:10:30)
@@ -435,6 +439,12 @@ stats.std_theta = std_thetas;
 stats.std_phi = std_phis;
 stats.nframes = nframes;
 fixticks
+
+Eout = struct;
+Eout.mask_eye_R = mask_eye_R;
+Eout.mask_eye_L = mask_eye_L;
+Eout.v_eye_local_head = v_eye_local_head;
+Eout.t_eye = t_eye;
 
 %% Plot the horizontal angle of the eye in local rigid body reference frame v. anterior position (in rigid body ref frame for now)
 

@@ -64,13 +64,18 @@ filepath_camera = 'Z:\Hannah\eyetrack\calibration\231102';
 % dir_root = 'HC19_240627';
 % downsample_eye = 6;
 
-runEyetrackSingle(fullfile(data_root, dir_root),downsample_eye)
+% runEyetrackSingle(fullfile(data_root, dir_root),downsample_eye)
 
 %% Run analysis for all birds (to re-run raw eye tracking, delete the results file e.g. eye.mat and eye_trangulate.mat)
 dir_roots = {'IND102_22*', 'HC05_22*', 'HC06_22*','HC07_22*','HC08_22*',...
     'HC09_22*','HC10_22*','HC11_2*','HC12_2*','HC13_2*','HC14_2*','HC15_2*',...
-    'HC17_2*','HC17R_2*','HC18R_2*','HC19_2*'} 
-downsample_eyes = [6 6 6 6 6 6 6 6 5 6 6 6 6 6 6 6];
+    'HC17_2*','HC17R_2*','HC18R_2*','HC19_2*'};
+
+dir_roots = {'HC08_22*','HC10_22*','HC11_2*','HC12_2*','HC13_2*','HC14_2*','HC15_2*',...
+    'HC17_2*','HC17R_2*','HC18R_2*','HC19_2*'} ; % 10 birds for paper
+downsample_eyes = 6*ones(size(dir_roots));
+downsample_eyes(startsWith(dir_roots,'HC12')) = 5;
+
 % NOTE: 'ROS38_220308*','TRQ180_220310*','CHC37_220310*', only had two head markers, and acrylic barrier - up through 220630, possibly less accurate?
 % NOTE: IND102 was measured before and after change on several days
 % NOTE: RBY47_221013 is the same bird as HC06_221013 before surgery, could

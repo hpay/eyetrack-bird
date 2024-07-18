@@ -124,11 +124,11 @@ for ii  = 1:length(folders)
     
     
 end
-% 
-%% Analyze results - TODO: apply arena calibrations to each file separately then combine!! Currently assumes same calibration for all files
+
+%% Analyze results for all session for this bird
 a = strfind(filepath_eye_root,'_');
 filepath_eye = [filepath_eye_root(1:a(end)-1) '_all']
-[H, Ht, stats] = analyzeEyetrack(E_all, p_pupil_all, p_cornea_all, p_beak_all, Q_all,  downsample_eye, dist_pc_all);
+[H, Ht, stats, Eout] = analyzeEyetrack(E_all, p_pupil_all, p_cornea_all, p_beak_all, Q_all,  downsample_eye, dist_pc_all);
 drawnow;
 H.folder_eye_calib = folders;
 H.folder_camera_calib = '';
@@ -142,4 +142,6 @@ mkdir(filepath_eye)
 save(fullfile(filepath_eye, 'head_calibration.mat'),'-struct','H');
 save(fullfile(filepath_eye, 'head_calibration_template.mat'),'Ht');
 save(fullfile(filepath_eye, 'head_calibration_stats.mat'),'stats');
+save(fullfile(filepath_eye, 'head_calibration_data.mat'),'-struct','Eout');
+save(fullfile(filepath_eye, 'head_calibration_qualisys.mat'),'-struct','Q_all');
 
