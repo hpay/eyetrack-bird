@@ -132,7 +132,7 @@ filepath_eye = [filepath_eye_root(1:a(end)-1) '_all']
 drawnow;
 H.folder_eye_calib = folders;
 H.folder_camera_calib = '';
-Ht.folder = filepath_eye;
+Ht.folder = {filepath_eye};
 disp(Ht)
 disp(stats)
 
