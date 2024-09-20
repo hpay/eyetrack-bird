@@ -16,8 +16,8 @@ filepath_camera = 'Z:\Hannah\eyetrack\calibration\231102';
 
 % dir_root = 'HC08_221028b'; %IND102_220707a
 
-% dir_root = 'IND102_220707a';
-% downsample_eye = 6;
+dir_root = 'IND102_220707a'; % *** example traces?
+downsample_eye = 6;
 % 
 % dir_root = 'HC07_221013';
 % downsample_eye = 6;
@@ -31,7 +31,7 @@ filepath_camera = 'Z:\Hannah\eyetrack\calibration\231102';
 % dir_root = 'HC09_221028a';
 % downsample_eye = 6;
 
-% dir_root = 'HC11_230201a';
+% dir_root = 'HC11_230201a'; %*** example
 % downsample_eye = 6;
 
 % dir_root = 'HC11_230201b';
@@ -64,12 +64,12 @@ filepath_camera = 'Z:\Hannah\eyetrack\calibration\231102';
 % dir_root = 'HC19_240627';
 % downsample_eye = 6;
 
-% runEyetrackSingle(fullfile(data_root, dir_root),downsample_eye)
+runEyetrackSingle(fullfile(data_root, dir_root),downsample_eye)
 
 %% Run analysis for all birds (to re-run raw eye tracking, delete the results file e.g. eye.mat and eye_trangulate.mat)
-dir_roots = {'IND102_22*', 'HC05_22*', 'HC06_22*','HC07_22*','HC08_22*',...
-    'HC09_22*','HC10_22*','HC11_2*','HC12_2*','HC13_2*','HC14_2*','HC15_2*',...
-    'HC17_2*','HC17R_2*','HC18R_2*','HC19_2*'};
+% dir_roots = {'IND102_22*', 'HC05_22*', 'HC06_22*','HC07_22*','HC08_22*',...
+%     'HC09_22*','HC10_22*','HC11_2*','HC12_2*','HC13_2*','HC14_2*','HC15_2*',...
+%     'HC17_2*','HC17R_2*','HC18R_2*','HC19_2*'};
 
 dir_roots = {'HC08_22*','HC10_22*','HC11_2*','HC12_2*','HC13_2*','HC14_2*','HC15_2*',...
     'HC17_2*','HC17R_2*','HC18R_2*','HC19_2*'} ; % 10 birds for paper
@@ -84,6 +84,8 @@ downsample_eyes(startsWith(dir_roots,'HC12')) = 5;
 for ii = 1:length(dir_roots)
     runEyetrackAll(fullfile(data_root, dir_roots{ii}), downsample_eyes(ii), ploton)   
 end
+
+
 
 %% Plot results & give stats for all birds
 plotEyetrack(data_root, dir_roots)
