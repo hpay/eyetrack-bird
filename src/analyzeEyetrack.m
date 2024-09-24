@@ -395,26 +395,34 @@ Ht.phi_eye = phi_eye;
 %% Scatter plot of gaze in polar coords
 figure('Units','Centi','Pos',[14   12   16   8]);
 hs  = gobjects(1,2);
-dists= {};
 nframes= [];
     v_eye_local_head = v_eye_local*H.R_head;
-
+angle_offset = NaN(size(mask_eye_R));
+delta_theta = NaN(size(mask_eye_R));
+delta_phi = NaN(size(mask_eye_R));
 for which_eye  = [0 1]
     if which_eye == 1
         mask_eye = mask_eye_R;
-        theta_mean = atan2d(H.v_eye_R_head(2), H.v_eye_R_head(1));
-        phi_mean = acosd(H.v_eye_R_head(3));
+        v_eye = H.v_eye_R_head;
     else
         mask_eye = mask_eye_L;
-        theta_mean = atan2d(H.v_eye_L_head(2), H.v_eye_L_head(1));
-        phi_mean = acosd(H.v_eye_L_head(3));
+        v_eye = H.v_eye_L_head;
     end
+     theta_mean = atan2d(v_eye(2), v_eye(1));
+        phi_mean = acosd(v_eye(3));
+        
+        % Get the overall angular offset from the mean eye vector
+    angle_offset(mask_eye) = acosd(dot(v_eye_local_head(mask_eye,:)', repmat(v_eye, 1, nnz(mask_eye))));
     
-    % Get local vectors of eye relative to head
+    % Get local vectors of eye relative to head    
     theta = atan2d(v_eye_local_head(mask_eye,2), v_eye_local_head(mask_eye,1));
     phi = acosd(v_eye_local_head(mask_eye,3));
     nframes(which_eye+1) = nnz(mask_eye);
+
     hs(which_eye+1) = subplot(1,2,which_eye+1);
+    delta_theta(mask_eye) = theta-theta_mean;
+    delta_phi(mask_eye) = phi-phi_mean;
+    std(theta_mean)
     scatter(theta-theta_mean, phi-phi_mean,9, 'c','MarkerEdgeAlpha',.3)
     axis equal
     a = 30; xlim([-a a]); ylim([-a a])
@@ -422,22 +430,23 @@ for which_eye  = [0 1]
     xlabel('Horizontal (°)')
     ylabel('Vertical (°)')
     
-    std_thetas(which_eye+1) = nanstd(theta);
-    std_phis(which_eye+1) = nanstd(phi);
-    dists{which_eye+1} = sqrt((theta-theta_mean).^2+(phi-phi_mean).^2);
-    
-
 end
+    std_thetas = nanstd(delta_theta);
+    std_phis = nanstd(delta_phi);
+    
 set(hs,'TickLength',[0 0])
 set(hs,'XTick',-30:10:30,'YTick',-30:10:30)
 set(hs,'XTickLabelRotationMode','manual')
-mean_dist = cellfun(@mean,dists);
-fprintf('Std horiz ang. %.2f %.2f deg, Std vert ang. %.2f %.2f deg (L/R)\n',std_thetas, std_phis)
-
+median_deviation = median(angle_offset,'omitnan');
+fprintf('Std horiz ang. %.2f deg, Std vert ang. %.2f deg \n',std_thetas, std_phis)
+fprintf('Median overall deviation%.3f\n', median_deviation)
+% fprintf('Std dists %.3f\n', median([dists{1}; dists{2}]))
 stats = table;
 stats.std_theta = std_thetas;
 stats.std_phi = std_phis;
+stats.median_overall = median_deviation;
 stats.nframes = nframes;
+
 fixticks
 
 Eout = struct;
@@ -445,6 +454,11 @@ Eout.mask_eye_R = mask_eye_R;
 Eout.mask_eye_L = mask_eye_L;
 Eout.v_eye_local_head = v_eye_local_head;
 Eout.t_eye = t_eye;
+
+
+%% Get the stdev of eye angles across both eyes
+
+
 
 %% Plot the horizontal angle of the eye in local rigid body reference frame v. anterior position (in rigid body ref frame for now)
 

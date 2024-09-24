@@ -71,8 +71,8 @@ runEyetrackSingle(fullfile(data_root, dir_root),downsample_eye)
 %     'HC09_22*','HC10_22*','HC11_2*','HC12_2*','HC13_2*','HC14_2*','HC15_2*',...
 %     'HC17_2*','HC17R_2*','HC18R_2*','HC19_2*'};
 
-dir_roots = {'HC08_22*','HC10_22*','HC11_2*','HC12_2*','HC13_2*','HC14_2*','HC15_2*',...
-    'HC17_2*','HC17R_2*','HC18R_2*','HC19_2*'} ; % 10 birds for paper
+dir_roots = {'HC08_22*','HC10_22*','HC11_2*','HC12_2*','HC13_2*','HC15_2*',...
+    'HC17_2*','HC18R_2*'} ; % 8 birds for paper
 downsample_eyes = 6*ones(size(dir_roots));
 downsample_eyes(startsWith(dir_roots,'HC12')) = 5;
 
