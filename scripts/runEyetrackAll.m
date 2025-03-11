@@ -125,9 +125,29 @@ for ii  = 1:length(folders)
     
 end
 
+
+%% Plot the distribution of eye angles relative to common reference frame (which is roughly aligned between the two cameras)
+
+% Get a unit vector pointing in the direction of the eye
+v_eye = (p_pupil_all-p_cornea_all)./sqrt(sum((p_pupil_all-p_cornea_all).^2, 2));
+
+% Get the horizontal angle (relative to the world/motor)
+yaw_eye = -real(squeeze(atan2(v_eye(:,2), v_eye(:,1))));
+pitch_eye = atan2(v_eye(:,3), sqrt(v_eye(:,1).^2 + v_eye(:,2).^2));
+yawd_eye = rad2deg(yaw_eye);
+pitchd_eye = rad2deg(pitch_eye);
+figure; plot(v_eye,'.')
+figure; plot([yawd_eye pitchd_eye],'.-');
+figure; histogram(yawd_eye-90, -50:1:50)
+figure; histogram(yawd_eye, -180:1:180)
+
+
 %% Analyze results for all session for this bird
 a = strfind(filepath_eye_root,'_');
 filepath_eye = [filepath_eye_root(1:a(end)-1) '_all']
+
+
+
 [H, Ht, stats, Eout] = analyzeEyetrack(E_all, p_pupil_all, p_cornea_all, p_beak_all, Q_all,  downsample_eye, dist_pc_all);
 drawnow;
 H.folder_eye_calib = folders;

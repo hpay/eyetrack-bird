@@ -5,7 +5,7 @@ addpath(fullfile(code_root,'src'));
 ploton = 1;
 
 %% Process a single calibration of cameras
-filepath_camera = 'Z:\Hannah\eyetrack\calibration\231102';
+filepath_camera = 'Z:\Hannah\eyetrack\calibration\250307';
 [C,A] = calibrateCameras(filepath_camera);
 % NOTE: To re-run calibration analysis, delete axes.mat and calib.mat files
 
@@ -16,8 +16,8 @@ filepath_camera = 'Z:\Hannah\eyetrack\calibration\231102';
 
 % dir_root = 'HC08_221028b'; %IND102_220707a
 
-dir_root = 'IND102_220707a'; % *** example traces?
-downsample_eye = 6;
+% dir_root = 'IND102_220707a'; % *** example traces?
+% downsample_eye = 6;
 % 
 % dir_root = 'HC07_221013';
 % downsample_eye = 6;
@@ -64,7 +64,9 @@ downsample_eye = 6;
 % dir_root = 'HC19_240627';
 % downsample_eye = 6;
 
-runEyetrackSingle(fullfile(data_root, dir_root),downsample_eye)
+
+% runEyetrackSingle(fullfile(data_root, dir_root),downsample_eye)
+
 
 %% Run analysis for all birds (to re-run raw eye tracking, delete the results file e.g. eye.mat and eye_trangulate.mat)
 % dir_roots = {'IND102_22*', 'HC05_22*', 'HC06_22*','HC07_22*','HC08_22*',...

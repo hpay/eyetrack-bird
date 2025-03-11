@@ -1,5 +1,5 @@
 function [c,p] = estimatepandc(params,light1,light2,v1,v2,u1a,u2a,u1b,u2b)
-% [snorm,c,p] = estimatepandc(params,light1,light2,v1,v2,u1a,u2a,u1b,u2b)
+% [c,p] = estimatepandc(params,light1,light2,v1,v2,u1a,u2a,u1b,u2b)
 % Estimate the 3D positions of the center of the virtual pupil and center
 % of corneal curvature. See Barsingerhorn, Boonstra & Goossens (2018),
 % Behav Res Meth
@@ -13,7 +13,7 @@ function [c,p] = estimatepandc(params,light1,light2,v1,v2,u1a,u2a,u1b,u2b)
 % params is a stereoParameters object
 % l1 = location of light source 1 (relative to nodal point cam1)
 % l2 = location of light source 2
-% v1 = image pupil center in cam 1 (all points are [x y])
+% v1 = image pupil center in cam 1 (all points are [x (across columns from left to right) y (down rows from top to bottom)])
 % v2 = image pupil center in cam 2
 % u1a= image glint a in cam 1
 % u2a= image glint a in cam 2
@@ -21,10 +21,11 @@ function [c,p] = estimatepandc(params,light1,light2,v1,v2,u1a,u2a,u1b,u2b)
 % u2b= image glint b in cam 2
 % c = center of corneal curvature
 % p = pupil center
-% snorm = unit vector from c to p
-
-% NOTE: 3/9/2022 corrected (?) CameraParameters1 and 2, which were swapped
-% in the original version!!!
+% 
+% c and p are in camera coodinates, centered on camera 1 center
+% First column: x axis of image in camera 1 (cols)
+% Second column: y axis of image in camera 2 (rows, down in actual space)
+% Third column: pointing along optical axis away from cameras
 
 % pupil world coordinates
 p = triangulate(undistortPoints(v1,params.CameraParameters1),...

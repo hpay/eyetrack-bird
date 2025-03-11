@@ -84,14 +84,11 @@ if p.smoothSigma
 end
 
 
-I_cr = I - p.pupil_intensity;
-
-% prctile(I_cr(:),92)
-I_cr = I_cr/152*255; % TEmp hard coding
-% I_cr = I_cr/prctile(I_cr(:),92)*255;
-
 % I_cr = I - p.pupil_intensity;
-% I_cr = I_cr/(p.iris_intensity-p.pupil_intensity)*255*.5; % For CR detection, brighten image so pupil ~0 and iris ~255*1/2; * *.25
+% I_cr = I_cr/152*255; % TEmp hard coding
+
+I_cr = I - p.pupil_intensity;
+I_cr = I_cr*255/(3*(p.iris_intensity-p.pupil_intensity)); % For CR detection, brighten image so pupil ~0 and iris ~255*1/3; 
 % I_cr(I_cr>255) =255; I_cr(I_cr<0) = 0;
 
 
@@ -198,7 +195,12 @@ if isfield(p, 'CR_box_width') || ~isempty(p.CR_box_width)
     %         'ObjectPolarity','bright','Sensitivity',0.94,'EdgeThreshold',0.1);
     %     figure; imagesc(Icr_crop);  colormap gray;
     %     hold on; viscircles(crxy0, crr0,'Color','y');
-    
+    if p.debug_on
+        figure; subplot(1,2,1); image(I_cr_crop); hold on ;       axis image
+        subplot(1,2,2); imagesc(A); hold on
+        plot(crxy0(:,1), crxy0(:,2),'+r')
+        axis image
+    end
 
     crxy0 = bsxfun(@plus, crxy0, [start_x start_y]-1);
 else
@@ -217,7 +219,7 @@ end
 %% Remove CR glints
 I_mask = false(size(I_pupil));
 I_mask(round(crxy0(:,2)), round(crxy0(:,1))) = true;
-I_mask = imdilate(I_mask,strel('disk', round(mean(p.radiiCR)*1.3))); % Expand the mask
+I_mask = imdilate(I_mask,strel('disk', round(mean(p.radiiCR)*1.7))); % Expand the mask (changed from 1.3)
 I_pupil_noCR = I_pupil;
 I_pupil_noCR(I_mask) = NaN;
 if p.debug_on

@@ -1,4 +1,4 @@
-function [E, p] = trackEye(filepath_eye,p, camfilename)
+function [E, p] = trackEye(filepath_eye,p, camfilename, option_restart)
 
 close all
 disp(filepath_eye)
@@ -35,6 +35,13 @@ pause(0.001);
 I1 = single(rgb2gray(read(vid1, round(p(1).example_t*frameRate))));
 I2 = single(rgb2gray(read(vid2, round(p(1).example_t*frameRate))));
 
+if ~isempty(p(1).cropX) 
+    I1 = I1(p(1).cropY(1):p(1).cropY(2),:);
+    I1 = I1(:,p(1).cropX(1):p(1).cropX(2));
+    I2 = I2(p(2).cropY(1):p(2).cropY(2),:);
+    I2 = I2(:,p(2).cropX(1):p(2).cropX(2));
+end
+
 % Run pupil and CR detection in each image
 [pupil1_temp,cr1_temp, ~, ~, points1] = detectPupilCR(I1, p(1).edge_thresh0, p(1));
 [pupil2_temp,cr2_temp, ~, ~, points2] = detectPupilCR(I2, p(2).edge_thresh0, p(2));
@@ -53,7 +60,7 @@ disp('Adjust pupil and iris intensities and quit/restart if needed')
 clear I1 I2 % to save memory
 
 %% Init
-if ~exist(fullfile(filepath_eye,'eye.mat'),'file')
+if ~exist(fullfile(filepath_eye,'eye.mat'),'file') 
     E = [];
     E.pupil1 = NaN(N_eye,5);
     E.cr1 = NaN(N_eye,3, p(1).nCRs);
@@ -86,6 +93,14 @@ for ii = ii_start:N_eye
     % Load image
     I1 = single(rgb2gray(read(vid1,ii)));
     I2 = single(rgb2gray(read(vid2,ii)));
+    
+    
+    if ~isempty(p(1).cropX)
+        I1 = I1(p(1).cropY(1):p(1).cropY(2),:);
+        I1 = I1(:,p(1).cropX(1):p(1).cropX(2));
+        I2 = I2(p(2).cropY(1):p(2).cropY(2),:);
+        I2 = I2(:,p(2).cropX(1):p(2).cropX(2));
+    end
     
     % Run pupil and CR detection in each image
     [E.pupil1(ii,:),E.cr1(ii,:,:), edge_thresh1, E.resid1(ii), points1] = ...

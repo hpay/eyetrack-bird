@@ -7,7 +7,12 @@ function [p_pupil_common, p_cornea_common, p_beak_common, p_rigidbody_common, R_
 % convert from camera coords to common coords
 p_pupil_common = (p_pupil - A.p0_eye)*A.R_eye*A.R_45; % A.p0_eye refers to axes origin measured by dual cameras (calibrateAxesBW)
 p_cornea_common = (p_cornea - A.p0_eye)*A.R_eye*A.R_45;
-p_beak_common = (p_beak - A.p0_eye)*A.R_eye*A.R_45;
+
+if ~isempty(p_beak)
+    p_beak_common = (p_beak - A.p0_eye)*A.R_eye*A.R_45;
+else
+    p_beak_common = [];
+end
 
 % convert from QTM coords to common coords
 N_head = length(p_rigidbody);

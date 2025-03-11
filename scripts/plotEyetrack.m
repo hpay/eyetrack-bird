@@ -51,6 +51,9 @@ end
 stats.filepath = filepath_eyes(:);
 disp(stats)
 
+
+fprintf('Mean pupil-CC distance (mm): %.3f+-%.3f (mean +- stdev)\n',mean(stats.mean_pupil_cc), std(stats.mean_pupil_cc))
+
 mu_std_theta = mean(stats.std_theta);
 mu_std_phi = mean(stats.std_phi);
 sigma_std_theta = std(stats.std_theta);

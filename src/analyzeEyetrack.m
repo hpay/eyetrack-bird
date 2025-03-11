@@ -2,6 +2,11 @@ function [H, Ht, stats, Eout] = analyzeEyetrack(Eraw, p_pupil0, p_cornea0, p_bea
 
 dir_figures = fullfile(fileparts(fileparts(which(mfilename))), 'results');
 mkdir(dir_figures)
+set(0, ...
+    'DefaultFigurePaperPositionMode','auto',... % exported figure looks like it does on the screen
+    'DefaultFigureColor', 'White', ...          % Figure background white
+    'DefaultAxesColor', 'None', ...          % Figure background white
+    'DefaultAxesBox', 'off')
 
 %% Load Qualisys rigid body
 N_head = Q_raw.N_head;
@@ -28,10 +33,11 @@ p_cornea(nanmask,:) = NaN;
 % Exclude points where the pupil-ccc distance is too far off from the median
 thresh_dist_p_c = 0.1; % Fraction away from median distance to exclude
 K = median(dist_pc,'omitnan'); % (mm)
-mask_dist_p_c = (abs(dist_pc - K)/K)> thresh_dist_p_c*scale;
-p_pupil(mask_dist_p_c,:) = NaN;
-p_cornea(mask_dist_p_c,:) = NaN;
-fprintf('Mean pupil-ccc distance: %.2f mm. mask_dist_p_c %.3f\n', nanmean(dist_pc(mask_dist_p_c)), mean(mask_dist_p_c))
+mask_dist_pc = (abs(dist_pc - K)/K)> thresh_dist_p_c*scale;
+p_pupil(mask_dist_pc,:) = NaN;
+p_cornea(mask_dist_pc,:) = NaN;
+mean_pupil_cc = nanmean(dist_pc(~mask_dist_pc));
+fprintf('Mean pupil-ccc distance: %.2f mm. mask_dist_p_c %.3f\n', mean_pupil_cc, mean(mask_dist_pc))
 
 
 %% Calculate eye locations/vectors and head locations/vectors relative to common axis reference frame
@@ -50,7 +56,9 @@ R_rigidbody_ds = temp.R(ind_downsample,:,:);
 
 
 %% Get eye points+vectors in local rigidbody frame.
-% Take eye to be center of corneal curvature. This is not exactly correct, but we don't know which point the eye rotates about anyway. 
+% Take eye to be center of corneal curvature. This is not exactly correct,
+% but we don't know which point the eye rotates about anyway. This doesn't
+% affect the angle.
 % Could be corrected (prior to alignCommonReferenceFrame) to be ~1.0 mm farther away along the camera axis, which is half the radius of the cornea (cornea diameter = 4.13 mm in Carolina chickadees, Moore 2013))
 p_eye = p_cornea;
 
@@ -324,6 +332,88 @@ set(gca,'XTick',0:5:15,'YTick',-10:5:10)
 fixticks
 %}
 
+%% Plot 3d animation of bird gaze model & record video
+%{
+r_eye  = 1.8;  % radius eye
+eyecolor = .9*[1 1 1];
+gaze_color = [67 127 138]/255;
+a = 6; % length eye arrows
+cyl_radius = .2; % eye arrow
+cone_radius = .4;  % eye arrow
+ftilt = @(p) rotateAbout(p, [0 1 0]', 25); % tilt beak down by X degrees
+
+b = norm(p_beak_local-p_head_local); % tip of beak
+p_eye_R_head = H.R_head'*(H.p_eye_R - p_head_local(:));
+p_eye_L_head = H.R_head'*(H.p_eye_L - p_head_local(:));
+v_beak_head = H.R_head'*vx_head_local'; % should be [1 0 0]
+p_eye_R_head = ftilt(p_eye_R_head);
+p_eye_L_head = ftilt(p_eye_L_head);
+v_beak_head = ftilt(v_beak_head);
+v_eye_R_head = ftilt(H.v_eye_R_head);
+v_eye_L_head = ftilt(H.v_eye_L_head);
+
+% Plot the sphere
+figure;
+plot3deye(p_eye_R_head, v_eye_R_head, r_eye, 1, eyecolor); hold on;
+plot3deye(p_eye_L_head, v_eye_L_head, r_eye, 1, eyecolor); hold on;
+
+% Plot arrows
+p1 = p_eye_R_head;
+p2 = p_eye_R_head+v_eye_R_head*a;
+plot3darrow(p1, p2,cyl_radius, cone_radius, gaze_color)
+p1 = p_eye_L_head;
+p2 = p_eye_L_head+v_eye_L_head*a;
+plot3darrow(p1, p2,cyl_radius, cone_radius, gaze_color)
+
+% Plot beak
+lbeak = 8; % mm approx length of chickadee beak
+plot3dcone((b-lbeak)*v_beak_head, b*v_beak_head, 1.5, .5*[1 1 1])
+% xlabel('x position (mm)');   ylabel('y position (mm)'); zlabel('z position (mm)')
+set(gca,'XTickLabel','','YTickLabel','','ZTickLabel','')
+box on
+axis equal; axis vis3d; 
+grid on
+lighting gouraud; % Apply Gouraud lighting for smooth shading
+material([0.6 0.4 0.1 10 .5]); % Adjusted material properties
+% camlight headlight; % Additional soft light in the camera direction
+hl(1) = light('Position', [5 5 5], 'Style', 'infinite'); % Light source from one direction
+hl(2) = light('Position', [-5 -5 10], 'Style', 'infinite'); % Another light source for soft reflections
+
+xlim([0 20]-5); ylim([-.5 .5]*20);zlim([0 20]-13)
+    view([0, 15]); % View azimuth changes, elevation stays at 30
+
+
+
+% Setup for video recording
+video_filename = 'rotation_movie.avi';  % Name of the output video file
+video_obj = VideoWriter(video_filename); % Create a video writer object
+video_obj.FrameRate = 30;                % Set frame rate (higher for smoother animation)
+open(video_obj);                         % Open the video writer
+
+% Define rotation parameters
+rotation_steps = 180;         % Number of steps for 90-degree rotation
+total_rotation = 90;         % Total degrees to rotate
+step_angle = total_rotation / rotation_steps; % Step size in degrees
+
+% Rotate the view step-by-step and capture each frame
+for k = 1:rotation_steps
+    % Rotate the view by step_angle around the z-axis
+    view([k * step_angle, 15]); % View azimuth changes, elevation stays at 30
+    drawnow;  % Update the figure
+    
+    % Capture the current frame and write it to the video
+    frame = getframe(gcf);
+    writeVideo(video_obj, frame);
+end
+
+% Close the video writer object
+close(video_obj);
+disp(['Movie saved as ', video_filename]);
+
+% Play the video (optional)
+implay(video_filename);
+%}
+
 %% Plot example for paper: head in world, eye in world, and eye in head
 %{
 mask_eye = mask_eye_R | mask_eye_L; % this mask excludes bad data points
@@ -396,7 +486,7 @@ Ht.phi_eye = phi_eye;
 figure('Units','Centi','Pos',[14   12   16   8]);
 hs  = gobjects(1,2);
 nframes= [];
-    v_eye_local_head = v_eye_local*H.R_head;
+v_eye_local_head = v_eye_local*H.R_head;
 angle_offset = NaN(size(mask_eye_R));
 delta_theta = NaN(size(mask_eye_R));
 delta_phi = NaN(size(mask_eye_R));
@@ -446,6 +536,7 @@ stats.std_theta = std_thetas;
 stats.std_phi = std_phis;
 stats.median_overall = median_deviation;
 stats.nframes = nframes;
+stats.mean_pupil_cc = mean_pupil_cc;
 
 fixticks
 
