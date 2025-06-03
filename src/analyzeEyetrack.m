@@ -194,6 +194,9 @@ p_head_local = p_meaneye_local;
 
 
 %% Get the mean "head vector": from mean of eyes to beak
+% TODO: it would be better to first define the y axis (line connecting two
+% eyes), THEN define the x axis (midpoint of two eyes to tip of beak),
+% since the beak measurement is less reliable. 
 vx_head_local = (p_beak_local-p_head_local)/norm(p_beak_local-p_head_local);
 
 % Define a rotation matrix to convert from the local rigid body reference frame to the "head" (beak-eyes) reference frame.
